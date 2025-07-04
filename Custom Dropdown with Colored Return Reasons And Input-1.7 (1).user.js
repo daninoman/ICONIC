@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Custom Dropdown with Colored Return Reasons And Input
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.7.1
 // @description  Scrolls the nearest scrollable container to hide the dropdown and show only options. Fills note input and simulates Enter.
 // @match        *://*/*
 // @grant        none
@@ -82,7 +82,7 @@
 
                 .green-option { color: green; }
                 .blue-option { color: blue; }
-                .orange-option { color: orange; }
+                .orange-option { color: red; }
                 .yellow-option { color: goldenrod; }
                 .red-option { color: red; }
                 .pink-option { color: deeppink; }
