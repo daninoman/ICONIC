@@ -5,6 +5,8 @@
 // @description  Scrolls the nearest scrollable container to hide the dropdown and show only options. Fills note input and simulates Enter.
 // @match        *://*/*
 // @grant        none
+// @updateURL   https://raw.githubusercontent.com/daninoman/ICONIC/main/Custom%20Dropdown%20with%20Colored%20Return%20Reasons%20And%20Input-1.7%20(1).user.js
+// @downloadURL https://raw.githubusercontent.com/daninoman/ICONIC/main/Custom%20Dropdown%20with%20Colored%20Return%20Reasons%20And%20Input-1.7%20(1).user.js
 // ==/UserScript==
 
 (function () {
