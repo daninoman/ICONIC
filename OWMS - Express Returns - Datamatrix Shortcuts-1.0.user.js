@@ -5,6 +5,8 @@
 // @description  Handle barcode commands, block input in scan fields, blur, focus, scroll, and trigger actions (*update, *print, *validate, etc.)
 // @author       Dani Noman
 // @match        *://*/*
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Datamatrix%20Shortcuts-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Datamatrix%20Shortcuts-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
