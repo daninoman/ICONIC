@@ -5,6 +5,8 @@
 // @author       Dani Noman
 // @description  Creates a custom dropdown menu within the Notes section on the Express Returns Page
 // @match        *://*/*
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Custom%20Notes%20Dropdown%20Menu-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Custom%20Notes%20Dropdown%20Menu-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
