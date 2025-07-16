@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Datamatrix Shortcuts
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
 // @description  Handle barcode commands, block input in scan fields, blur, focus, scroll, and trigger actions (*update, *print, *validate, etc.)
 // @author       Dani Noman
 // @match        *://*/*
@@ -43,7 +43,7 @@
         if (resetTimeout) clearTimeout(resetTimeout);
         resetTimeout = setTimeout(() => buffer = '', 500);
 
-        if (e.key.length === 1) {
+        if (typeof e.key === 'string' && e.key.length === 1) {
             buffer += e.key;
 
             if ((isScanField || isUIDField) && isCommandMatchInProgress(buffer)) {
