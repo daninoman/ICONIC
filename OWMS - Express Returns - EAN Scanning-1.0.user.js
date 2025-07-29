@@ -5,6 +5,8 @@
 // @description  Scanning of EAN Barcodes to select items on the Express Returns Page
 // @author       Dani Noman
 // @match        *://*/*
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20EAN%20Scanning-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20EAN%20Scanning-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
