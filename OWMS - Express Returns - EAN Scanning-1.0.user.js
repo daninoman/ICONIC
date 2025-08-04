@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - EAN Scanning
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Scanning of EAN Barcodes to select items on the Express Returns Page
 // @author       Dani Noman
 // @match        *://*/*
@@ -81,6 +81,18 @@
     function findSKUAndCheckCheckbox(sku) {
         const isEAN = EAN_REGEX.test(sku);
         let { containers, hadIneligibleMatch } = findMatchingContainers(sku);
+
+        // Fallback for removing first digit
+        if (containers.length === 0 && isEAN && sku.length >= 8) {
+            const trimmedSKU = sku.slice(1);
+            console.log(`🔄 No exact match for ${sku}, trying fallback SKU ${trimmedSKU} (removed first digit)`);
+            const result = findMatchingContainers(trimmedSKU);
+            containers = result.containers;
+            hadIneligibleMatch = hadIneligibleMatch || result.hadIneligibleMatch;
+            if (containers.length > 0) {
+                sku = trimmedSKU;
+            }
+        }
 
         // Fallback for 14-digit EAN
         if (containers.length === 0 && isEAN && sku.length === 14) {
@@ -267,27 +279,27 @@
 
     observer.observe(document.body, { childList: true, subtree: true });
 
-function updateScanUI() {
-    // Update <h2> headings that say "Scan UID"
-    const headings = document.querySelectorAll('h2');
-    headings.forEach(h => {
-        if (h.textContent.trim() === 'Scan UID') {
-            h.textContent = 'Scan UID/Barcode';
+    function updateScanUI() {
+        // Update <h2> headings that say "Scan UID"
+        const headings = document.querySelectorAll('h2');
+        headings.forEach(h => {
+            if (h.textContent.trim() === 'Scan UID') {
+                h.textContent = 'Scan UID/Barcode';
+            }
+        });
+
+        // Update placeholder on <input id="input_uid">
+        const input = document.getElementById('input_uid');
+        if (input && input.placeholder.trim() === 'Scan UID') {
+            input.placeholder = 'Scan UID/Barcode';
         }
-    });
-
-    // Update placeholder on <input id="input_uid">
-    const input = document.getElementById('input_uid');
-    if (input && input.placeholder.trim() === 'Scan UID') {
-        input.placeholder = 'Scan UID/Barcode';
     }
-}
 
-// Run once on initial page load
-updateScanUI();
+    // Run once on initial page load
+    updateScanUI();
 
-// Observe DOM for changes (for dynamic content)
-const uiObserver = new MutationObserver(updateScanUI);
-uiObserver.observe(document.body, { childList: true, subtree: true });
+    // Observe DOM for changes (for dynamic content)
+    const uiObserver = new MutationObserver(updateScanUI);
+    uiObserver.observe(document.body, { childList: true, subtree: true });
 
 })();
