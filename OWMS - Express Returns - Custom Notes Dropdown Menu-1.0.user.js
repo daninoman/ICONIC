@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Custom Notes Dropdown Menu
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.1.1
 // @author       Dani Noman
 // @description  Creates a custom dropdown menu within the Notes section on the Express Returns Page
 // @match        *://*/*
@@ -145,10 +145,13 @@
                 'Odour',
                 'Pet hair',
                 'Heavily crinkled',
+                'Crease marks',
                 'Worn/dirty',
+                'Hygiene seal',
                 'Ripped',
                 'Broken',
                 'Damaged/missing branded packaging',
+                'Late return',
             ],
             'SKU ISSUE': [
                 'Marketplace',
