@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Custom Notes Dropdown Menu
 // @namespace    http://tampermonkey.net/
-// @version      1.1.1
+// @version      1.1.2
 // @author       Dani Noman
 // @description  Creates a custom dropdown menu within the Notes section on the Express Returns Page
 // @match        *://*/*
@@ -151,6 +151,8 @@
                 'Ripped',
                 'Broken',
                 'Damaged/missing branded packaging',
+                'Crooked frame',
+                'Washed/wet',
                 'Late return',
             ],
             'SKU ISSUE': [
