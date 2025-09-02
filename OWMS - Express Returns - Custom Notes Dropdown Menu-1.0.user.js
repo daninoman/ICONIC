@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Custom Notes Dropdown Menu
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
+// @version      1.1.3
 // @author       Dani Noman
 // @description  Creates a custom dropdown menu within the Notes section on the Express Returns Page
 // @match        *://*/*
@@ -133,12 +133,12 @@
         secondaryOptionsContainer.className = 'secondary-dropdown-options';
 
         const subOptionsMap = {
-            'CS: FURTHER INVESTIGATION': [
+            'RI: FURTHER INVESTIGATION': [
                 'Item is in a shipped status',
                 'Item is in a delierved status',
                 'Customer sent back incorrect item',
             ],
-            'CS: REJECTED RETURN': [
+            'RI: REJECTED RETURN': [
                 'Makeup stain',
                 'No tag',
                 'Perfume smell',
@@ -238,8 +238,8 @@
             ['SKU ISSUE', 'blue-option'],
             ['WAREHOUSE: RETURN REASON FAULTY', 'orange-option'],
             ['MARKETPLACE: RETURN REASON FAULTY', 'yellow-option'],
-            ['CS: FURTHER INVESTIGATION', 'red-option'],
-            ['CS: REJECTED RETURN', 'pink-option'],
+            ['RI: FURTHER INVESTIGATION', 'red-option'],
+            ['RI: REJECTED RETURN', 'pink-option'],
             ['BEAUTY ITEM', 'black-option'],
         ];
 
