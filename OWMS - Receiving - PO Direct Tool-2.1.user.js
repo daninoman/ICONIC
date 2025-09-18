@@ -6,6 +6,8 @@
 // @author       Dani Noman & Edward Luu
 // @match        https://oms-live-au.zalora.net/*
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Receiving%20-%20PO%20Direct%20Tool-2.1.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Receiving%20-%20PO%20Direct%20Tool-2.1.user.js
 // ==/UserScript==
 
 (function() {
