@@ -1,10 +1,12 @@
 // ==UserScript==
-// @name         OWMS Inbound by Barcode Script - Production
+// @name         OWMS Inbound by Barcode Script - With Reprint
 // @namespace    http://tampermonkey.net/
 // @version      1.0
-// @description  Click buttons on key press
-// @author       Ashur Chamoun
+// @description  Click buttons on shocrtcut scan
+// @author       Edward Luu and Dani Noman
 // @match        https://oms-live-au.zalora.net/inbound/inbound-by-barcode*
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Inbound%20by%20Barcode%20-%20Shortcuts%20-%20With%20Reprint-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Inbound%20by%20Barcode%20-%20Shortcuts%20-%20With%20Reprint-1.0.user.js
 // @grant        GM_download
 // ==/UserScript==
 
