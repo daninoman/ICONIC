@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Auto Click Ship Package Button
+// @name         OWMS - FloWrap - Auto Click Ship Package Button
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Auto-click the "Update and ship package" button once it appears and is enabled
