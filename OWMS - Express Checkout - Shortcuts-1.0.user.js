@@ -2,10 +2,12 @@
 // @name         OWMS Express Checkout Script - Production
 // @namespace    http://tampermonkey.net/
 // @version      1.0
-// @description  Click buttons on key press
-// @author       Ashur Chamoun
+// @description  Click buttons on shocrtcut scan
+// @author       Edward Luu & Dani Noman
 // @match        https://oms-live-au.zalora.net/express-checkout/*
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Checkout%20-%20Shortcuts-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Checkout%20-%20Shortcuts-1.0.user.js
 // ==/UserScript==
 
 (function() {
