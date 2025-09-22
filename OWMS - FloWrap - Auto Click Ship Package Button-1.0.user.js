@@ -5,6 +5,8 @@
 // @description  Auto-click the "Update and ship package" button once it appears and is enabled
 // @author       Dani Noman
 // @match        https://oms-live-au.zalora.net/express-checkout/dynamic*
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20FloWrap%20-%20Auto%20Click%20Ship%20Package%20Button-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20FloWrap%20-%20Auto%20Click%20Ship%20Package%20Button-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
