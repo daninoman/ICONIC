@@ -4,7 +4,10 @@
 // @version      1.0
 // @description  Prints "BEAUTY ITEM" on the Express Returns Page
 // @match        *://*/*
+// @author       Dani Noman
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Print%20Beauty%20Item-1.0.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Print%20Beauty%20Item-1.0.user.js
 // ==/UserScript==
 
 (function() {
