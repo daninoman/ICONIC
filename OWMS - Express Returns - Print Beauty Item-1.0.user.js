@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Print Beauty Item
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
 // @description  Prints "BEAUTY ITEM" on the Express Returns Page
 // @match        *://*/*
 // @author       Dani Noman
@@ -40,6 +40,9 @@
         document.body.appendChild(printBtn);
 
         printBtn.addEventListener('click', () => {
+            // Remove focus immediately so Enter key doesn’t trigger the button again
+            printBtn.blur();
+
             const printWindow = window.open('', '', 'width=600,height=400');
             printWindow.document.write('<html><head><title>Print</title></head><body>');
             printWindow.document.write(`
