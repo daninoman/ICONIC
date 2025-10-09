@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Custom Notes Dropdown Menu
 // @namespace    http://tampermonkey.net/
-// @version      1.1.3
+// @version      1.1.4
 // @author       Dani Noman
 // @description  Creates a custom dropdown menu within the Notes section on the Express Returns Page
 // @match        *://*/*
@@ -240,7 +240,7 @@
             ['MARKETPLACE: RETURN REASON FAULTY', 'yellow-option'],
             ['RI: FURTHER INVESTIGATION', 'red-option'],
             ['RI: REJECTED RETURN', 'pink-option'],
-            ['BEAUTY ITEM', 'black-option'],
+            ['ADMIN: REJECTED RETURN (-$50)', 'black-option'],
         ];
 
         options.forEach(([text, color]) => {
