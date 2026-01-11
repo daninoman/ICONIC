@@ -5,6 +5,8 @@
 // @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
 // @author       Dani Noman
 // @match        *://*/*
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
