@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
 // @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
 // @author       Dani Noman
 // @match        *://*/*
@@ -188,9 +188,14 @@ if (showBulk) applyYellowTheme(rightContainer);
     container.style.background = '#FFEB3B';
     container.style.borderColor = '#000';
 }
-    window.addEventListener('focusin', function(e) {
-        if (e.target.id === 'input_location_item') {
-            let day = getDayCode();
+window.addEventListener('focusin', function(e) {
+    if (e.target.id === 'input_location_item') {
+
+        // only show when row is selected
+        const selectedRow = e.target.closest('.bg-row_selected');
+        if (!selectedRow) return;
+
+        let day = getDayCode();
 
             const targetImage = document.querySelector('img[src^="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASoA"]');
 
