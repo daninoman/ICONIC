@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
 // @author       Dani Noman
 // @match        *://*/*
@@ -35,6 +35,7 @@
         popup.style.alignItems = 'center';
         popup.style.padding = '40px';
         popup.style.zIndex = '99999';
+        popup.style.transform = 'translateY(-40px)';
 
         let canvas1, label1;
 
