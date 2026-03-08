@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Print Can't Find
 // @namespace    http://tampermonkey.net/
-// @version      1.1.3
-// @description  Prints "CAN'T FIND" and a QR code of the User Email (reverted to original style)
-// @match        *://*/*
+// @version      1.1.5
+// @description  Compact Print "CAN'T FIND" and QR code specifically for Zalora OMS Express Returns
 // @author       Edward Luu
+// @match        https://oms-live-au.zalora.net/return/express-return*
+// @match        https://oms-live-au.zalora.net/view/v1/return/express-return*
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Print%20Can't%20Find.user.js
 // @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Print%20Can't%20Find.user.js
@@ -13,15 +14,23 @@
 (function() {
     'use strict';
 
+    // The element that appears when an item is scanned
     const partialClass = 'pl-4';
     const buttonId = 'print-cant-find-btn';
     let printBtn = null;
 
+    /**
+     * Looks for the user email ending in @theiconic.com.au.
+     * Reaches out to the top-level window since the email sits in the Zalora header.
+     */
     function findUserEmail() {
         const emailRegex = /[\w.+\-]+@theiconic\.com\.au/i;
+        
+        // 1. Check the content frame
         let match = document.body.innerText.match(emailRegex);
         if (match) return match[0];
 
+        // 2. Check the Top parent window (Zalora OMS Header)
         try {
             if (window.top && window.top.document) {
                 const topText = window.top.document.body.innerText;
@@ -50,6 +59,7 @@
         printBtn.style.borderRadius = '5px';
         printBtn.style.cursor = 'pointer';
         printBtn.style.fontWeight = 'bold';
+        printBtn.style.boxShadow = '0px 2px 10px rgba(0,0,0,0.4)';
 
         document.body.appendChild(printBtn);
 
@@ -58,35 +68,34 @@
 
             const userEmail = findUserEmail();
             const encodedEmail = encodeURIComponent(userEmail);
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodedEmail}`;
+            
+            // Compact size: 80x80 (Simulates the 40% scale you needed)
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodedEmail}`;
 
-            const printWindow = window.open('', '', 'width=600,height=400');
+            const printWindow = window.open('', '', 'width=300,height=300');
             printWindow.document.write('<html><head><title>Print</title></head><body>');
             
-            // Reverting to the original flexbox style used in the Beauty script
             printWindow.document.write(`
-                <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; text-align:center;">
-                    <p style="font-size:42px; font-weight:bold; line-height:1.0; margin: 0 0 20px 0; white-space: nowrap;">
+                <div style="text-align:center; padding: 10px; width: 200px; margin: 0 auto; font-family: sans-serif;">
+                    <p style="font-size:22px; font-weight:bold; line-height:1.0; margin: 0 0 10px 0; white-space: nowrap;">
                         CAN'T FIND
                     </p>
-                    <img src="${qrUrl}" width="150" height="150" />
+                    <img src="${qrUrl}" width="80" height="80" style="display: block; margin: 0 auto;" />
                 </div>
             `);
 
-            printWindow.document.write('</body></html>');
             printWindow.document.close();
             printWindow.focus();
 
-            // Wait for QR code to load
             const img = printWindow.document.querySelector('img');
             img.onload = function() {
                 printWindow.print();
                 printWindow.close();
             };
             
-            // Fallback if image load fails
+            // Safety timeout
             setTimeout(() => {
-                if (!printWindow.closed) {
+                if (printWindow && !printWindow.closed) {
                     printWindow.print();
                     printWindow.close();
                 }
@@ -95,6 +104,7 @@
     }
 
     function checkForTargetElement() {
+        // The script checks if an item is currently active on the Express Returns page
         const el = document.querySelector(`p[class*="${partialClass}"]`);
         if (el) {
             createPrintButton();
@@ -104,7 +114,10 @@
         }
     }
 
+    // Run check immediately
     checkForTargetElement();
+
+    // Use MutationObserver to detect when items are scanned/updated
     const observer = new MutationObserver(checkForTargetElement);
     observer.observe(document.body, { childList: true, subtree: true });
 
