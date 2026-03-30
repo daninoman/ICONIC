@@ -6,8 +6,8 @@
 // @author       Edward Luu
 // @match        *://*/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Print%20Can't%20Find.user.js
-// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Print%20Can't%20Find.user.js
+// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Multi-Reason%20Auto%20Printer-1.1.7.user.js
+// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Multi-Reason%20Auto%20Printer-1.1.7.user.js
 // ==/UserScript==
 
 (function() {
