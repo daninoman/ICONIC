@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Multi-Reason Auto Printer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.7
-// @description  Grey-ish Thermal Output: Softer contrast for better thermal printing. Layout: Reason on top, Icon left, QR right.
+// @version      1.1.9
+// @description  Data Matrix Update: Grey text for stability, Sharp Black Data Matrix for industrial scanning.
 // @author       Edward Luu
 // @match        *://*/*
 // @grant        none
@@ -35,7 +35,10 @@
     function printLabel(icon, reasonText) {
         const userEmail = findUserEmail();
         const encodedEmail = encodeURIComponent(userEmail);
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=55x55&data=${encodedEmail}`;
+        
+        // Using TEC-IT API for professional Data Matrix generation
+        // data: the email, code: DataMatrix, dpi: 96 for sharp rendering
+        const dmUrl = `https://barcode.tec-it.com/barcode.ashx?data=${encodedEmail}&code=DataMatrix&dpi=96`;
 
         const printWindow = window.open('', '', 'width=400,height=300');
         printWindow.document.write(`
@@ -43,44 +46,48 @@
             <head>
                 <style>
                     @page { margin: 0; }
-                    body {
-                        margin: 0; padding: 0;
-                        display: flex; flex-direction: column;
-                        justify-content: center; align-items: center;
-                        height: 100vh; font-family: sans-serif;
-                        text-align: center;
-                        color: #555; /* Dark Grey Text */
+                    body { 
+                        margin: 0; padding: 0; 
+                        display: flex; flex-direction: column; 
+                        justify-content: center; align-items: center; 
+                        height: 100vh; font-family: sans-serif; 
+                        text-align: center; 
                     }
-                    .wrapper {
-                        display: flex; flex-direction: column;
-                        align-items: center; width: 95%;
+                    .wrapper { 
+                        display: flex; flex-direction: column; 
+                        align-items: center; width: 95%; 
                         margin-top: -10px;
                     }
-                    .header {
-                        font-size: 22px;
-                        font-weight: 900;
-                        margin-bottom: 8px;
-                        width: 100%;
-                        text-transform: uppercase;
+                    .header { 
+                        font-size: 22px; 
+                        font-weight: 900; 
+                        margin-bottom: 8px; 
+                        width: 100%; 
+                        text-transform: uppercase; 
                         line-height: 1.0;
+                        color: #555; /* Grey text stays for anti-smudge */
                     }
-                    .row {
-                        display: flex;
-                        flex-direction: row;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 20px;
+                    .row { 
+                        display: flex; 
+                        flex-direction: row; 
+                        align-items: center; 
+                        justify-content: center; 
+                        gap: 25px; 
                         width: 100%;
                     }
-                    .icon {
-                        font-size: 50px;
-                        filter: grayscale(1); /* Remove emoji colors */
-                        opacity: 0.7; /* Grey-ish appearance */
+                    .icon { 
+                        font-size: 50px; 
+                        filter: grayscale(1); 
+                        opacity: 0.7;
                         -webkit-filter: grayscale(1);
                     }
-                    img {
+                    .dm-img {
                         display: block;
-                        opacity: 0.8; /* Softer QR code blocks */
+                        /* Data Matrix MUST be high contrast */
+                        filter: contrast(200%) brightness(1);
+                        /* Industrial sharpening for thermal heads */
+                        image-rendering: pixelated; 
+                        image-rendering: crisp-edges;
                     }
                 </style>
             </head>
@@ -89,12 +96,12 @@
                     <div class="header">${reasonText}</div>
                     <div class="row">
                         <span class="icon">${icon}</span>
-                        <img src="${qrUrl}" width="55" height="55" />
+                        <img class="dm-img" src="${dmUrl}" width="60" height="60" />
                     </div>
                 </div>
                 <script>
                     window.onload = function() {
-                        setTimeout(function() { window.print(); window.close(); }, 350);
+                        setTimeout(function() { window.print(); window.close(); }, 400);
                     };
                 </script>
             </body>
