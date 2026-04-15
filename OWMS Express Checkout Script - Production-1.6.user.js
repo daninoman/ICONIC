@@ -6,8 +6,8 @@
 // @author       Edward Luu & Dani Noman
 // @match        https://oms-live-au.zalora.net/express-checkout/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Checkout%20-%20Shortcuts-1.6.user.js
-// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Checkout%20-%20Shortcuts-1.6.user.js
+// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20Express%20Checkout%20Script%20-%20Production-1.6.user.js
+// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20Express%20Checkout%20Script%20-%20Production-1.6.user.js
 // ==/UserScript==
 
 (function() {
