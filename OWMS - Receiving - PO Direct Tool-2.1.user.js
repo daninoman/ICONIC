@@ -25,7 +25,7 @@
         if (event.key === 'Enter') {
             if (qrDataBuffer.includes('*opentab')) {
                 // Open the specific URL in a new tab if the data contains "*opentab"
-                window.open('https://script.google.com/a/macros/theiconic.com.au/s/AKfycbxKPsvzc0J6XJPVm0S1STG55W1uKSYsRimei8av-P4gFFFYO84Y0AXamPR6uC6sBic/exec');
+                window.open('https://script.google.com/a/macros/theiconic.com.au/s/AKfycby7rNzPXxlIkewaVqTrf3vBG3JWRWZ6Bb6qDAxsSrYWG6_s2-iidU_Af8Ei1PmnStmvTQ/exec');
             }
             // Reset buffer after handling the input
             qrDataBuffer = '';
