@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Multi-Reason Auto Printer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.9
-// @description  Data Matrix Update: Grey text for stability, Sharp Black Data Matrix for industrial scanning.
+// @version      1.2.4
+// @description  Full-Screen Print Dialog: Maximized window for best visibility. Auto-closes after printing.
 // @author       Edward Luu
 // @match        *://*/*
 // @grant        none
@@ -35,15 +35,18 @@
     function printLabel(icon, reasonText) {
         const userEmail = findUserEmail();
         const encodedEmail = encodeURIComponent(userEmail);
-        
-        // Using TEC-IT API for professional Data Matrix generation
-        // data: the email, code: DataMatrix, dpi: 96 for sharp rendering
         const dmUrl = `https://barcode.tec-it.com/barcode.ashx?data=${encodedEmail}&code=DataMatrix&dpi=96`;
 
-        const printWindow = window.open('', '', 'width=400,height=300');
+        // FULL SCREEN LOGIC: Detect available monitor width and height
+        const w = window.screen.availWidth;
+        const h = window.screen.availHeight;
+
+        const printWindow = window.open('', '_blank', `width=${w},height=${h},top=0,left=0,scrollbars=yes,status=no,menubar=no,toolbar=no`);
+        
         printWindow.document.write(`
             <html>
             <head>
+                <title>Print Label - Full Screen Mode</title>
                 <style>
                     @page { margin: 0; }
                     body { 
@@ -51,44 +54,14 @@
                         display: flex; flex-direction: column; 
                         justify-content: center; align-items: center; 
                         height: 100vh; font-family: sans-serif; 
-                        text-align: center; 
+                        text-align: center; color: #555;
                     }
-                    .wrapper { 
-                        display: flex; flex-direction: column; 
-                        align-items: center; width: 95%; 
-                        margin-top: -10px;
-                    }
-                    .header { 
-                        font-size: 22px; 
-                        font-weight: 900; 
-                        margin-bottom: 8px; 
-                        width: 100%; 
-                        text-transform: uppercase; 
-                        line-height: 1.0;
-                        color: #555; /* Grey text stays for anti-smudge */
-                    }
-                    .row { 
-                        display: flex; 
-                        flex-direction: row; 
-                        align-items: center; 
-                        justify-content: center; 
-                        gap: 25px; 
-                        width: 100%;
-                    }
-                    .icon { 
-                        font-size: 50px; 
-                        filter: grayscale(1); 
-                        opacity: 0.7;
-                        -webkit-filter: grayscale(1);
-                    }
-                    .dm-img {
-                        display: block;
-                        /* Data Matrix MUST be high contrast */
-                        filter: contrast(200%) brightness(1);
-                        /* Industrial sharpening for thermal heads */
-                        image-rendering: pixelated; 
-                        image-rendering: crisp-edges;
-                    }
+                    /* Content stays centered and sized for thermal labels */
+                    .wrapper { display: flex; flex-direction: column; align-items: center; width: 300px; }
+                    .header { font-size: 24px; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; line-height: 1.0; }
+                    .row { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 25px; width: 100%; }
+                    .icon { font-size: 60px; filter: grayscale(1); opacity: 0.7; }
+                    .dm-img { display: block; filter: contrast(200%) brightness(1); image-rendering: pixelated; }
                 </style>
             </head>
             <body>
@@ -96,18 +69,28 @@
                     <div class="header">${reasonText}</div>
                     <div class="row">
                         <span class="icon">${icon}</span>
-                        <img class="dm-img" src="${dmUrl}" width="60" height="60" />
+                        <img class="dm-img" src="${dmUrl}" width="70" height="70" />
                     </div>
                 </div>
                 <script>
                     window.onload = function() {
-                        setTimeout(function() { window.print(); window.close(); }, 400);
+                        // Small delay to allow the full-screen window to focus
+                        setTimeout(function() {
+                            window.print();
+                        }, 400);
+                    };
+                    // Auto-close when printing is done or cancelled
+                    window.onafterprint = function() {
+                        window.close();
                     };
                 </script>
             </body>
             </html>
         `);
         printWindow.document.close();
+        
+        // Remove focus from main window to assist the "Enter" key workflow
+        if (document.activeElement) document.activeElement.blur();
     }
 
     function analyzeNoteAndPrint(note) {
@@ -127,7 +110,7 @@
         btn.id = btnIdCantFind;
         btn.textContent = '🔍 Can\'t Find';
         btn.style = "position:fixed; bottom:110px; left:20px; padding:10px; z-index:10000; background:#d32f2f; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow:0px 2px 10px rgba(0,0,0,0.4);";
-        btn.onclick = () => { btn.blur(); printLabel("🔍", "CAN'T FIND"); };
+        btn.onclick = (e) => { e.preventDefault(); printLabel("🔍", "CAN'T FIND"); };
         document.body.appendChild(btn);
     }
 
@@ -137,7 +120,7 @@
         btn.id = btnIdBeauty;
         btn.textContent = '🧴 Beauty Item';
         btn.style = "position:fixed; bottom:60px; left:20px; padding:10px; z-index:10000; background:black; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow:0px 2px 10px rgba(0,0,0,0.4);";
-        btn.onclick = () => { btn.blur(); printLabel("🧴", "BEAUTY ITEM"); };
+        btn.onclick = (e) => { e.preventDefault(); printLabel("🧴", "BEAUTY ITEM"); };
         document.body.appendChild(btn);
     }
 
