@@ -135,7 +135,7 @@
         const subOptionsMap = {
             'RI: FURTHER INVESTIGATION': [
                 'Item is in a shipped status',
-                'Item is in a delierved status',
+                'Item is in a delivered status',
                 'Customer sent back incorrect item',
             ],
             'RI: REJECTED RETURN': [
@@ -240,7 +240,7 @@
             ['MARKETPLACE: RETURN REASON FAULTY', 'yellow-option'],
             ['RI: FURTHER INVESTIGATION', 'red-option'],
             ['RI: REJECTED RETURN', 'pink-option'],
-            ['ADMIN: REJECTED RETURN (-$50)', 'black-option'],
+            ['ADMIN: REJECTED RETURN (-$40)', 'black-option'],
         ];
 
         options.forEach(([text, color]) => {
