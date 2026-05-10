@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Multi-Reason Auto Printer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.4
-// @description  Full-Screen Print Dialog: Maximized window for best visibility. Auto-closes after printing.
+// @version      1.2.9
+// @description  Updated $40 Threshold. Forced Sub-options for SKU and RI Rejected. Full-Screen Print.
 // @author       Edward Luu
 // @match        *://*/*
 // @grant        none
@@ -22,13 +22,7 @@
         const emailRegex = /[\w.+\-]+@theiconic\.com\.au/i;
         let match = document.body.innerText.match(emailRegex);
         if (match) return match[0];
-        try {
-            if (window.top && window.top.document) {
-                const topText = window.top.document.body.innerText;
-                const topMatch = topText.match(emailRegex);
-                if (topMatch) return topMatch[0];
-            }
-        } catch (e) {}
+        try { if (window.top && window.top.document) { return window.top.document.body.innerText.match(emailRegex)[0]; } } catch (e) {}
         return 'Unknown_User';
     }
 
@@ -37,26 +31,16 @@
         const encodedEmail = encodeURIComponent(userEmail);
         const dmUrl = `https://barcode.tec-it.com/barcode.ashx?data=${encodedEmail}&code=DataMatrix&dpi=96`;
 
-        // FULL SCREEN LOGIC: Detect available monitor width and height
         const w = window.screen.availWidth;
         const h = window.screen.availHeight;
+        const printWindow = window.open('', '_blank', `width=${w},height=${h},top=0,left=0`);
 
-        const printWindow = window.open('', '_blank', `width=${w},height=${h},top=0,left=0,scrollbars=yes,status=no,menubar=no,toolbar=no`);
-        
         printWindow.document.write(`
             <html>
             <head>
-                <title>Print Label - Full Screen Mode</title>
                 <style>
                     @page { margin: 0; }
-                    body { 
-                        margin: 0; padding: 0; 
-                        display: flex; flex-direction: column; 
-                        justify-content: center; align-items: center; 
-                        height: 100vh; font-family: sans-serif; 
-                        text-align: center; color: #555;
-                    }
-                    /* Content stays centered and sized for thermal labels */
+                    body { margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; text-align: center; color: #555; }
                     .wrapper { display: flex; flex-direction: column; align-items: center; width: 300px; }
                     .header { font-size: 24px; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; line-height: 1.0; }
                     .row { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 25px; width: 100%; }
@@ -67,77 +51,100 @@
             <body>
                 <div class="wrapper">
                     <div class="header">${reasonText}</div>
-                    <div class="row">
-                        <span class="icon">${icon}</span>
-                        <img class="dm-img" src="${dmUrl}" width="70" height="70" />
-                    </div>
+                    <div class="row"><span class="icon">${icon}</span><img class="dm-img" src="${dmUrl}" width="70" height="70" /></div>
                 </div>
                 <script>
-                    window.onload = function() {
-                        // Small delay to allow the full-screen window to focus
-                        setTimeout(function() {
-                            window.print();
-                        }, 400);
-                    };
-                    // Auto-close when printing is done or cancelled
-                    window.onafterprint = function() {
-                        window.close();
-                    };
+                    window.onload = function() { setTimeout(function() { window.print(); }, 400); };
+                    window.onafterprint = function() { window.close(); };
                 </script>
             </body>
             </html>
         `);
         printWindow.document.close();
-        
-        // Remove focus from main window to assist the "Enter" key workflow
         if (document.activeElement) document.activeElement.blur();
     }
 
     function analyzeNoteAndPrint(note) {
         const text = note.toUpperCase();
+
         if (text.includes("WAREHOUSE: RETURN REASON FAULTY")) printLabel("🧵", "FAULTY WAREHOUSE");
         else if (text.includes("MARKETPLACE: RETURN REASON FAULTY")) printLabel("📦", "FAULTY MP");
-        else if (text.includes("SKU ISSUE")) printLabel("🏷️", "SKU ISSUE");
         else if (text.includes("RI: FURTHER INVESTIGATION")) printLabel("❓", "FURTHERS");
-        else if (text.includes("ADMIN: REJECTED RETURN (-$50)")) printLabel("🚫", "REJECTED -$50");
-        else if (text.includes("RI: REJECTED RETURN")) printLabel("✖️", "REJECTED +$50");
         else if (text.includes("BEAUTY")) printLabel("🧴", "BEAUTY ITEM");
+
+        // Updated $40 Threshold logic
+        else if (text.includes("ADMIN: REJECTED RETURN (-$40)")) printLabel("🚫", "REJECTED -$40");
+        else if (text.includes("RI: REJECTED RETURN")) printLabel("✖️", "REJECTED +$40");
+
+        // SKU Logic
+        else if (text.includes("SKU ISSUE") && text.includes("MARKETPLACE")) printLabel("🏷️", "SKU ISSUE MP");
+        else if (text.includes("SKU ISSUE") && text.includes("WAREHOUSE")) printLabel("🏷️", "SKU ISSUE WH");
     }
 
-    function createCantFindButton() {
-        if (document.getElementById(btnIdCantFind)) return;
-        const btn = document.createElement('button');
-        btn.id = btnIdCantFind;
-        btn.textContent = '🔍 Can\'t Find';
-        btn.style = "position:fixed; bottom:110px; left:20px; padding:10px; z-index:10000; background:#d32f2f; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow:0px 2px 10px rgba(0,0,0,0.4);";
-        btn.onclick = (e) => { e.preventDefault(); printLabel("🔍", "CAN'T FIND"); };
-        document.body.appendChild(btn);
-    }
+    function isNoteValid(noteVal) {
+        const text = noteVal.toUpperCase();
 
-    function createBeautyButton() {
-        if (document.getElementById(btnIdBeauty)) return;
-        const btn = document.createElement('button');
-        btn.id = btnIdBeauty;
-        btn.textContent = '🧴 Beauty Item';
-        btn.style = "position:fixed; bottom:60px; left:20px; padding:10px; z-index:10000; background:black; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow:0px 2px 10px rgba(0,0,0,0.4);";
-        btn.onclick = (e) => { e.preventDefault(); printLabel("🧴", "BEAUTY ITEM"); };
-        document.body.appendChild(btn);
+        // 1. SKU Issue Gatekeeper
+        if (text.includes("SKU ISSUE") && !text.includes("MARKETPLACE") && !text.includes("WAREHOUSE")) {
+            alert("🛑 SKU ISSUE ERROR\n\nYou must specify if it is:\n- SKU ISSUE MARKETPLACE\n- SKU ISSUE WAREHOUSE");
+            return false;
+        }
+
+        // 2. Rejected Return Gatekeeper
+        if (text.includes("RI: REJECTED RETURN")) {
+            const triggerPhrase = "RI: REJECTED RETURN";
+            const index = text.indexOf(triggerPhrase);
+            const detail = text.substring(index + triggerPhrase.length).trim();
+            if (detail.length === 0) {
+                alert("🛑 REJECTION DETAIL REQUIRED\n\nPlease add a reason after the text (e.g. Makeup stain, No tag) before sending.");
+                return false;
+            }
+        }
+        return true;
     }
 
     document.addEventListener('click', function(e) {
         const target = e.target;
         if (target.tagName === 'IMG' && target.alt === 'Send message') {
             const noteInput = document.getElementById('noteInput');
-            if (noteInput && noteInput.value) analyzeNoteAndPrint(noteInput.value);
+            if (noteInput && noteInput.value) {
+                if (!isNoteValid(noteInput.value)) {
+                    e.stopImmediatePropagation(); e.preventDefault();
+                    return false;
+                }
+                analyzeNoteAndPrint(noteInput.value);
+            }
         }
     }, true);
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.id === 'noteInput') {
+            const noteVal = e.target.value;
+            if (noteVal) {
+                if (!isNoteValid(noteVal)) {
+                    e.stopImmediatePropagation(); e.preventDefault();
+                    return false;
+                }
+                analyzeNoteAndPrint(noteVal);
+            }
+        }
+    }, true);
+
+    function createManualButton(id, text, bottom, color, label) {
+        if (document.getElementById(id)) return;
+        const btn = document.createElement('button');
+        btn.id = id; btn.textContent = text;
+        btn.style = `position:fixed; bottom:${bottom}; left:20px; padding:10px; z-index:10000; background:${color}; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow:0px 2px 10px rgba(0,0,0,0.4);`;
+        btn.onclick = (e) => { e.preventDefault(); printLabel(text.includes('Find') ? "🔍" : "🧴", label); };
+        document.body.appendChild(btn);
+    }
 
     function monitorPage() {
         const isItemPage = document.querySelector(`p[class*="${partialClass}"]`);
         const isScanPage = document.body.innerText.includes(triggerText);
-        if (isItemPage || isScanPage) createCantFindButton();
+        if (isItemPage || isScanPage) createManualButton(btnIdCantFind, '🔍 Can\'t Find', '110px', '#d32f2f', "CAN'T FIND");
         else { const b = document.getElementById(btnIdCantFind); if (b) b.remove(); }
-        if (isItemPage) createBeautyButton();
+        if (isItemPage) createManualButton(btnIdBeauty, '🧴 Beauty Item', '60px', 'black', "BEAUTY ITEM");
         else { const b = document.getElementById(btnIdBeauty); if (b) b.remove(); }
     }
 
