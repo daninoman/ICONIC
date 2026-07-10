@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Multi-Reason Auto Printer
 // @namespace    http://tampermonkey.net/
-// @version      1.9.0
+// @version      1.9.1
 // @description  Updated $40 Threshold. Forced Sub-options for SKU and RI Rejected. Full-Screen Print.
 // @author       Edward Luu
 // @match        *://*/*
