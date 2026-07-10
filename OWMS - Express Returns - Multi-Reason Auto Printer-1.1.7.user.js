@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Multi-Reason Auto Printer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.9
+// @version      1.9.0
 // @description  Updated $40 Threshold. Forced Sub-options for SKU and RI Rejected. Full-Screen Print.
 // @author       Edward Luu
 // @match        *://*/*
@@ -26,10 +26,26 @@
         return 'Unknown_User';
     }
 
+    function findOrderNumber() {
+        const orderEl = document.querySelector('p.items-center.pl-4.text-base.font-normal');
+        return orderEl ? orderEl.textContent.trim() : '';
+    }
+
+    // Formats as: dd/mm/yy hh:mm
+    function getDateTime() {
+        const now = new Date();
+        const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return `${date} ${time}`;
+    }
+
     function printLabel(icon, reasonText) {
         const userEmail = findUserEmail();
         const encodedEmail = encodeURIComponent(userEmail);
         const dmUrl = `https://barcode.tec-it.com/barcode.ashx?data=${encodedEmail}&code=DataMatrix&dpi=96`;
+
+        const orderNumber = (reasonText.includes("CAN'T FIND")) ? "" : findOrderNumber();
+        const currentDateTime = getDateTime();
 
         const w = window.screen.availWidth;
         const h = window.screen.availHeight;
@@ -40,23 +56,59 @@
             <head>
                 <style>
                     @page { margin: 0; }
-                    body { margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; text-align: center; color: #555; }
-                    .wrapper { display: flex; flex-direction: column; align-items: center; width: 300px; }
+                    body {
+                        margin: 0; padding: 0;
+                        display: flex; flex-direction: column;
+                        justify-content: center; align-items: center;
+                        height: 100vh; font-family: sans-serif;
+                        text-align: center; color: #555;
+                        position: relative;
+                    }
+                    .wrapper { display: flex; flex-direction: column; align-items: center; width: 300px; margin-top: -10px;}
                     .header { font-size: 24px; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; line-height: 1.0; }
                     .row { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 25px; width: 100%; }
                     .icon { font-size: 60px; filter: grayscale(1); opacity: 0.7; }
                     .dm-img { display: block; filter: contrast(200%) brightness(1); image-rendering: pixelated; }
+
+                    /* Date/Time in BOTTOM-RIGHT */
+                    .date-footer {
+                        position: absolute;
+                        bottom: 10px;
+                        right: 15px;
+                        font-size: 10px;
+                        font-weight: bold;
+                        color: #999;
+                    }
+
+                    /* Order Number in BOTTOM-LEFT */
+                    .order-footer {
+                        position: absolute;
+                        bottom: 10px;
+                        left: 15px;
+                        font-size: 12px;
+                        font-weight: bold;
+                        color: #777;
+                    }
                 </style>
             </head>
             <body>
                 <div class="wrapper">
                     <div class="header">${reasonText}</div>
-                    <div class="row"><span class="icon">${icon}</span><img class="dm-img" src="${dmUrl}" width="70" height="70" /></div>
+                    <div class="row">
+                        <span class="icon">${icon}</span>
+                        <img class="dm-img" src="${dmUrl}" width="70" height="70" />
+                    </div>
                 </div>
+                <div class="date-footer">${currentDateTime}</div>
+                ${orderNumber ? `<div class="order-footer">${orderNumber}</div>` : ''}
                 <script>
-                    window.onload = function() { setTimeout(function() { window.print(); }, 400); };
-                    window.onafterprint = function() { window.close(); };
-                </script>
+                    window.onload = function() {
+                        setTimeout(function() { window.print(); }, 400);
+                    };
+                    window.onafterprint = function() {
+                        window.close();
+                    };
+                <\/script>
             </body>
             </html>
         `);
@@ -66,31 +118,22 @@
 
     function analyzeNoteAndPrint(note) {
         const text = note.toUpperCase();
-
         if (text.includes("WAREHOUSE: RETURN REASON FAULTY")) printLabel("🧵", "FAULTY WAREHOUSE");
         else if (text.includes("MARKETPLACE: RETURN REASON FAULTY")) printLabel("📦", "FAULTY MP");
         else if (text.includes("RI: FURTHER INVESTIGATION")) printLabel("❓", "FURTHERS");
         else if (text.includes("BEAUTY")) printLabel("🧴", "BEAUTY ITEM");
-
-        // Updated $40 Threshold logic
         else if (text.includes("ADMIN: REJECTED RETURN (-$40)")) printLabel("🚫", "REJECTED -$40");
         else if (text.includes("RI: REJECTED RETURN")) printLabel("✖️", "REJECTED +$40");
-
-        // SKU Logic
         else if (text.includes("SKU ISSUE") && text.includes("MARKETPLACE")) printLabel("🏷️", "SKU ISSUE MP");
         else if (text.includes("SKU ISSUE") && text.includes("WAREHOUSE")) printLabel("🏷️", "SKU ISSUE WH");
     }
 
     function isNoteValid(noteVal) {
         const text = noteVal.toUpperCase();
-
-        // 1. SKU Issue Gatekeeper
         if (text.includes("SKU ISSUE") && !text.includes("MARKETPLACE") && !text.includes("WAREHOUSE")) {
             alert("🛑 SKU ISSUE ERROR\n\nYou must specify if it is:\n- SKU ISSUE MARKETPLACE\n- SKU ISSUE WAREHOUSE");
             return false;
         }
-
-        // 2. Rejected Return Gatekeeper
         if (text.includes("RI: REJECTED RETURN")) {
             const triggerPhrase = "RI: REJECTED RETURN";
             const index = text.indexOf(triggerPhrase);
@@ -108,10 +151,7 @@
         if (target.tagName === 'IMG' && target.alt === 'Send message') {
             const noteInput = document.getElementById('noteInput');
             if (noteInput && noteInput.value) {
-                if (!isNoteValid(noteInput.value)) {
-                    e.stopImmediatePropagation(); e.preventDefault();
-                    return false;
-                }
+                if (!isNoteValid(noteInput.value)) { e.stopImmediatePropagation(); e.preventDefault(); return false; }
                 analyzeNoteAndPrint(noteInput.value);
             }
         }
@@ -121,10 +161,7 @@
         if (e.key === 'Enter' && e.target.id === 'noteInput') {
             const noteVal = e.target.value;
             if (noteVal) {
-                if (!isNoteValid(noteVal)) {
-                    e.stopImmediatePropagation(); e.preventDefault();
-                    return false;
-                }
+                if (!isNoteValid(noteVal)) { e.stopImmediatePropagation(); e.preventDefault(); return false; }
                 analyzeNoteAndPrint(noteVal);
             }
         }
