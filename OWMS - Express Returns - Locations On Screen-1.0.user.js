@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
-// @version      1.0.3
+// @version      1.0.4
 // @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
 // @author       Dani Noman
 // @match        *://*/*
