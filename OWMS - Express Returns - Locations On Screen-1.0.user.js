@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
+// @version      1.0.3
 // @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
 // @author       Dani Noman
 // @match        *://*/*
@@ -18,6 +18,27 @@
         return days[new Date().getDay()];
     }
 
+    // Scans the entire HTML of the page for the unique Base64 snippets
+    function determineMode() {
+        const pageSource = document.body.innerHTML;
+
+        const whSnippet = "iVBORw0KGgoAAAANSUhEUgAAAQAA"; // Warehouse Override (Priority)
+        const mpSnippet = "iVBORw0KGgoAAAANSUhEUgAAASoA"; // Marketplace Flag
+
+        // Check for Warehouse first - if it's anywhere on the page, force Warehouse mode
+        if (pageSource.includes(whSnippet)) {
+            return "WAREHOUSE";
+        }
+
+        // If no Warehouse flag, check for Marketplace
+        if (pageSource.includes(mpSnippet)) {
+            return "MARKETPLACE";
+        }
+
+        // Fallback to Warehouse if neither is found
+        return "WAREHOUSE";
+    }
+
     function createPopup(code1, code2, bulkCode, whBulkCode, input, showBulk) {
         let old = document.getElementById('barcode-popup');
         if (old) old.remove();
@@ -29,28 +50,28 @@
         popup.style.left = '0';
         popup.style.width = '100vw';
         popup.style.height = '100vh';
-        popup.style.background = 'rgba(0,0,0,0.6)';
+        popup.style.background = 'rgba(0,0,0,0.7)';
         popup.style.zIndex = '99999';
 
         let canvas1, canvas2, canvas3, canvas4;
 
         if (showBulk) {
-            // === MARKETPLACE LAYOUT (Far Left / Far Right Middle) ===
+            // === MARKETPLACE LAYOUT (Yellow - Side by Side) ===
             let boxL = createBarcodeBox(bulkCode, true);
             boxL.style.top = '50%';
-            boxL.style.left = '40px';
+            boxL.style.left = '60px';
             boxL.style.transform = 'translateY(-50%)';
             canvas1 = boxL.querySelector('canvas');
             popup.appendChild(boxL);
 
             let boxR = createBarcodeBox(code2, true);
             boxR.style.top = '50%';
-            boxR.style.right = '40px';
+            boxR.style.right = '60px';
             boxR.style.transform = 'translateY(-50%)';
             canvas2 = boxR.querySelector('canvas');
             popup.appendChild(boxR);
         } else {
-            // === WAREHOUSE OFFSET LAYOUT ===
+            // === WAREHOUSE ZIG-ZAG LAYOUT (White) ===
 
             // 1. Far Bottom Left Corner (SHOES)
             let box1 = createBarcodeBox(code2);
@@ -59,7 +80,7 @@
             canvas1 = box1.querySelector('canvas');
             popup.appendChild(box1);
 
-            // 2. Top Left Offset (BULK - 1/4 to the right)
+            // 2. Top Left Offset (BULK - 1/4 right)
             let box2 = createBarcodeBox(whBulkCode);
             box2.style.top = '30px';
             box2.style.left = '25%';
@@ -67,7 +88,7 @@
             canvas2 = box2.querySelector('canvas');
             popup.appendChild(box2);
 
-            // 3. Bottom Right Offset (ASRS - 1/4 to the left)
+            // 3. Bottom Right Offset (ASRS - 1/4 left)
             let box3 = createBarcodeBox(code1);
             box3.style.bottom = '30px';
             box3.style.right = '25%';
@@ -90,8 +111,8 @@
             container.style.position = 'absolute';
             container.style.background = isYellow ? '#FFEB3B' : 'white';
             container.style.padding = '15px';
-            container.style.border = '3px solid black';
-            container.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+            container.style.border = '4px solid black';
+            container.style.boxShadow = '0 0 25px rgba(0,0,0,0.8)';
             container.style.textAlign = 'center';
 
             let canvas = document.createElement('canvas');
@@ -102,8 +123,7 @@
             label.innerText = text;
             label.style.marginTop = '8px';
             label.style.fontWeight = '900';
-            label.style.fontSize = '18px';
-            label.style.color = 'black';
+            label.style.fontSize = '20px';
 
             container.appendChild(canvas);
             container.appendChild(label);
@@ -163,23 +183,27 @@
             const selectedRow = e.target.closest('.bg-row_selected');
             if (!selectedRow) return;
 
-            let day = getDayCode();
-            const targetImage = document.querySelector('img[src^="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASoA"]');
+            // Small delay to ensure the DOM is updated if the app is dynamic
+            setTimeout(() => {
+                let day = getDayCode();
+                let mode = determineMode();
 
-            let code1 = `ASRSRTN-${day}`;
-            let code2;
-            let bulkCode = `MPRBULKAP-${day}`;
-            let whBulkCode = `WHBULKY-${day}`;
-            let showBulk = false;
+                let code1 = `ASRSRTN-${day}`;
+                let code2;
+                let bulkCode = `MPRBULKAP-${day}`;
+                let whBulkCode = `WHBULKY-${day}`;
+                let showBulk;
 
-            if (targetImage) {
-                code2 = `MPRSHOES-${day}`;
-                showBulk = true;
-            } else {
-                code2 = `WHSHOES-${day}`;
-            }
+                if (mode === "WAREHOUSE") {
+                    showBulk = false;
+                    code2 = `WHSHOES-${day}`;
+                } else {
+                    showBulk = true;
+                    code2 = `MPRSHOES-${day}`;
+                }
 
-            createPopup(code1, code2, bulkCode, whBulkCode, e.target, showBulk);
+                createPopup(code1, code2, bulkCode, whBulkCode, e.target, showBulk);
+            }, 50);
         }
     });
 })();
