@@ -2,9 +2,11 @@
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
 // @version      1.0.5
-// @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
-// @author       Dani Noman
+// @description  Identifies Warehouse/Marketplace/Advice flags and displays correct location barcodes
+// @author       Dani Noman / [Your Team]
 // @match        *://*/*
+// @downloadURL  https://YOUR_HOSTING_PATH_HERE.user.js
+// @updateURL    https://YOUR_HOSTING_PATH_HERE.user.js
 // @grant        none
 // ==/UserScript==
 
@@ -25,12 +27,12 @@
         const adviceSnippet = "EACAYAAABccqhmAAAQeElEQVR4nO3d"; // New DRIF Flag
         const mpSnippet = "iVBORw0KGgoAAAANSUhEUgAAASoA"; // Marketplace Flag
 
-        // If either Warehouse flag OR the new Advice flag is found, use WAREHOUSE mode
+        // LOGIC: If the standard Warehouse icon OR the new Return Advice icon is found, use WAREHOUSE mode
         if (pageSource.includes(whSnippet) || pageSource.includes(adviceSnippet)) {
             return "WAREHOUSE";
         }
 
-        // Check for Marketplace
+        // If Marketplace flag is found, use MARKETPLACE mode
         if (pageSource.includes(mpSnippet)) {
             return "MARKETPLACE";
         }
@@ -56,7 +58,7 @@
         let canvas1, canvas2, canvas3, canvas4;
 
         if (showBulk) {
-            // === MARKETPLACE LAYOUT (Yellow - Side by Side) ===
+            // === MARKETPLACE LAYOUT (Yellow Background) ===
             let boxL = createBarcodeBox(bulkCode, true);
             boxL.style.top = '50%';
             boxL.style.left = '60px';
@@ -71,16 +73,13 @@
             canvas2 = boxR.querySelector('canvas');
             popup.appendChild(boxR);
         } else {
-            // === WAREHOUSE ZIG-ZAG LAYOUT (White) ===
-
-            // 1. Far Bottom Left Corner (SHOES)
+            // === WAREHOUSE LAYOUT (White Background - 4 Corners) ===
             let box1 = createBarcodeBox(code2);
             box1.style.bottom = '30px';
             box1.style.left = '30px';
             canvas1 = box1.querySelector('canvas');
             popup.appendChild(box1);
 
-            // 2. Top Left Offset (BULK - 1/4 right)
             let box2 = createBarcodeBox(whBulkCode);
             box2.style.top = '30px';
             box2.style.left = '25%';
@@ -88,7 +87,6 @@
             canvas2 = box2.querySelector('canvas');
             popup.appendChild(box2);
 
-            // 3. Bottom Right Offset (ASRS - 1/4 left)
             let box3 = createBarcodeBox(code1);
             box3.style.bottom = '30px';
             box3.style.right = '25%';
@@ -96,7 +94,6 @@
             canvas3 = box3.querySelector('canvas');
             popup.appendChild(box3);
 
-            // 4. Far Top Right Corner (MISLABEL)
             let box4 = createBarcodeBox('RTNmislabel');
             box4.style.top = '30px';
             box4.style.right = '30px';
