@@ -5,8 +5,8 @@
 // @description  Identifies Warehouse/Marketplace/Advice flags and displays correct location barcodes
 // @author       Dani Noman / [Your Team]
 // @match        *://*/*
-// @downloadURL  https://YOUR_HOSTING_PATH_HERE.user.js
-// @updateURL    https://YOUR_HOSTING_PATH_HERE.user.js
+// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
+// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
