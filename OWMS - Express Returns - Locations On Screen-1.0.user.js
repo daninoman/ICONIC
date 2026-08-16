@@ -1,12 +1,10 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
-// @version      1.0.4
+// @version      1.0.5
 // @description  Show datamatrix codes when focusing input_location_item and auto-close when field turns green (valid input)
 // @author       Dani Noman
 // @match        *://*/*
-// @downloadURL  https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
-// @updateURL    https://raw.githubusercontent.com/daninoman/ICONIC/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
@@ -18,24 +16,26 @@
         return days[new Date().getDay()];
     }
 
-    // Scans the entire HTML of the page for the unique Base64 snippets
+    // Scans the page for specific image signatures to determine the return type
     function determineMode() {
         const pageSource = document.body.innerHTML;
 
-        const whSnippet = "iVBORw0KGgoAAAANSUhEUgAAAQAA"; // Warehouse Override (Priority)
+        // Base64 snippets for image detection
+        const whSnippet = "iVBORw0KGgoAAAANSUhEUgAAAQAA"; // Standard Warehouse Flag
+        const adviceSnippet = "EACAYAAABccqhmAAAQeElEQVR4nO3d"; // New DRIF Flag
         const mpSnippet = "iVBORw0KGgoAAAANSUhEUgAAASoA"; // Marketplace Flag
 
-        // Check for Warehouse first - if it's anywhere on the page, force Warehouse mode
-        if (pageSource.includes(whSnippet)) {
+        // If either Warehouse flag OR the new Advice flag is found, use WAREHOUSE mode
+        if (pageSource.includes(whSnippet) || pageSource.includes(adviceSnippet)) {
             return "WAREHOUSE";
         }
 
-        // If no Warehouse flag, check for Marketplace
+        // Check for Marketplace
         if (pageSource.includes(mpSnippet)) {
             return "MARKETPLACE";
         }
 
-        // Fallback to Warehouse if neither is found
+        // Fallback to Warehouse if none are detected
         return "WAREHOUSE";
     }
 
@@ -183,7 +183,6 @@
             const selectedRow = e.target.closest('.bg-row_selected');
             if (!selectedRow) return;
 
-            // Small delay to ensure the DOM is updated if the app is dynamic
             setTimeout(() => {
                 let day = getDayCode();
                 let mode = determineMode();
