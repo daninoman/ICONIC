@@ -1,205 +1,129 @@
 // ==UserScript==
 // @name         OWMS - Express Returns - Locations On Screen
 // @namespace    http://tampermonkey.net/
-// @version      1.0.5
-// @description  Identifies Warehouse/Marketplace/Advice flags and displays correct location barcodes
+// @version      1.0.6
+// @description  Automated Barcode Popups for Warehouse Returns
 // @author       Dani Noman / [Your Team]
 // @match        *://*/*
-// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
-// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
+// @require      https://unpkg.com/bwip-js/dist/bwip-js-min.js
+// @downloadURL  PASTE_YOUR_RAW_GITHUB_URL_HERE
+// @updateURL    PASTE_YOUR_RAW_GITHUB_URL_HERE
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
+    // 1. Utility: Get current day abbreviation
     function getDayCode() {
         const days = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
         return days[new Date().getDay()];
     }
 
-    // Scans the page for specific image signatures to determine the return type
+    // 2. Detection: Look for image snippets to determine return type
     function determineMode() {
         const pageSource = document.body.innerHTML;
 
-        // Base64 snippets for image detection
-        const whSnippet = "iVBORw0KGgoAAAANSUhEUgAAAQAA"; // Standard Warehouse Flag
-        const adviceSnippet = "EACAYAAABccqhmAAAQeElEQVR4nO3d"; // New DRIF Flag
-        const mpSnippet = "iVBORw0KGgoAAAANSUhEUgAAASoA"; // Marketplace Flag
+        const whSnippet = "iVBORw0KGgoAAAANSUhEUgAAAQAA"; // Standard WH icon
+        const adviceSnippet = "EACAYAAABccqhmAAAQeElEQVR4nO3d"; // New DRIF flag
+        const mpSnippet = "iVBORw0KGgoAAAANSUhEUgAAASoA"; // Marketplace icon
 
-        // LOGIC: If the standard Warehouse icon OR the new Return Advice icon is found, use WAREHOUSE mode
+        // Priority 1: Check for Warehouse or Return Advice
         if (pageSource.includes(whSnippet) || pageSource.includes(adviceSnippet)) {
             return "WAREHOUSE";
         }
 
-        // If Marketplace flag is found, use MARKETPLACE mode
+        // Priority 2: Check for Marketplace
         if (pageSource.includes(mpSnippet)) {
             return "MARKETPLACE";
         }
 
-        // Fallback to Warehouse if none are detected
+        // Default to Warehouse
         return "WAREHOUSE";
     }
 
-    function createPopup(code1, code2, bulkCode, whBulkCode, input, showBulk) {
+    // 3. UI: Create the popup on screen
+    function createPopup(inputElement, mode) {
         let old = document.getElementById('barcode-popup');
         if (old) old.remove();
 
+        const day = getDayCode();
+        const isMarketplace = (mode === "MARKETPLACE");
+
+        // Container overlay
         let popup = document.createElement('div');
         popup.id = 'barcode-popup';
-        popup.style.position = 'fixed';
-        popup.style.top = '0';
-        popup.style.left = '0';
-        popup.style.width = '100vw';
-        popup.style.height = '100vh';
-        popup.style.background = 'rgba(0,0,0,0.7)';
-        popup.style.zIndex = '99999';
+        popup.style = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:999999; display:flex; justify-content:center; align-items:center;";
 
-        let canvas1, canvas2, canvas3, canvas4;
+        // Content Area
+        let content = document.createElement('div');
+        content.style = "position:relative; width:100%; height:100%; pointer-events:none;";
+        popup.appendChild(content);
 
-        if (showBulk) {
-            // === MARKETPLACE LAYOUT (Yellow Background) ===
-            let boxL = createBarcodeBox(bulkCode, true);
-            boxL.style.top = '50%';
-            boxL.style.left = '60px';
-            boxL.style.transform = 'translateY(-50%)';
-            canvas1 = boxL.querySelector('canvas');
-            popup.appendChild(boxL);
+        // Helper to create individual barcode boxes
+        function addBox(text, style, bg = "white") {
+            let box = document.createElement('div');
+            box.style = style + `position:absolute; background:${bg}; padding:15px; border:4px solid black; box-shadow:0 0 25px rgba(0,0,0,0.8); text-align:center; pointer-events:auto;`;
+            
+            let canvas = document.createElement('canvas');
+            let label = document.createElement('div');
+            label.innerText = text;
+            label.style = "margin-top:8px; font-weight:900; font-size:20px; font-family:sans-serif;";
 
-            let boxR = createBarcodeBox(code2, true);
-            boxR.style.top = '50%';
-            boxR.style.right = '60px';
-            boxR.style.transform = 'translateY(-50%)';
-            canvas2 = boxR.querySelector('canvas');
-            popup.appendChild(boxR);
+            box.appendChild(canvas);
+            box.appendChild(label);
+            content.appendChild(box);
+
+            // Generate Barcode using BWIP-JS (now reliable via @require)
+            try {
+                bwipjs.toCanvas(canvas, {
+                    bcid: 'datamatrix',
+                    text: text,
+                    scale: 4,
+                    includetext: false,
+                });
+            } catch (e) { console.error("Barcode Error:", e); }
+        }
+
+        if (isMarketplace) {
+            // MARKETPLACE LAYOUT (Side-by-Side, Yellow)
+            addBox(`MPRBULKAP-${day}`, "top:50%; left:15%; transform:translateY(-50%);", "#FFEB3B");
+            addBox(`MPRSHOES-${day}`, "top:50%; right:15%; transform:translateY(-50%);", "#FFEB3B");
         } else {
-            // === WAREHOUSE LAYOUT (White Background - 4 Corners) ===
-            let box1 = createBarcodeBox(code2);
-            box1.style.bottom = '30px';
-            box1.style.left = '30px';
-            canvas1 = box1.querySelector('canvas');
-            popup.appendChild(box1);
-
-            let box2 = createBarcodeBox(whBulkCode);
-            box2.style.top = '30px';
-            box2.style.left = '25%';
-            box2.style.transform = 'translateX(-50%)';
-            canvas2 = box2.querySelector('canvas');
-            popup.appendChild(box2);
-
-            let box3 = createBarcodeBox(code1);
-            box3.style.bottom = '30px';
-            box3.style.right = '25%';
-            box3.style.transform = 'translateX(50%)';
-            canvas3 = box3.querySelector('canvas');
-            popup.appendChild(box3);
-
-            let box4 = createBarcodeBox('RTNmislabel');
-            box4.style.top = '30px';
-            box4.style.right = '30px';
-            canvas4 = box4.querySelector('canvas');
-            popup.appendChild(box4);
+            // WAREHOUSE LAYOUT (4 Corners, White)
+            addBox(`WHSHOES-${day}`, "bottom:40px; left:40px;");
+            addBox(`WHBULKY-${day}`, "top:40px; left:25%; transform:translateX(-50%);");
+            addBox(`ASRSRTN-${day}`, "bottom:40px; right:25%; transform:translateX(50%);");
+            addBox(`RTNmislabel`, "top:40px; right:40px;");
         }
 
         document.body.appendChild(popup);
 
-        function createBarcodeBox(text, isYellow = false) {
-            let container = document.createElement('div');
-            container.style.position = 'absolute';
-            container.style.background = isYellow ? '#FFEB3B' : 'white';
-            container.style.padding = '15px';
-            container.style.border = '4px solid black';
-            container.style.boxShadow = '0 0 25px rgba(0,0,0,0.8)';
-            container.style.textAlign = 'center';
-
-            let canvas = document.createElement('canvas');
-            canvas.style.display = 'block';
-            canvas.style.margin = '0 auto';
-
-            let label = document.createElement('div');
-            label.innerText = text;
-            label.style.marginTop = '8px';
-            label.style.fontWeight = '900';
-            label.style.fontSize = '20px';
-
-            container.appendChild(canvas);
-            container.appendChild(label);
-            return container;
-        }
-
-        popup.addEventListener('click', () => popup.remove());
-
+        // Auto-close on scan (if field turns green)
         const observer = new MutationObserver(() => {
-            if (input.classList.contains('border-green-500') || input.classList.contains('dark:border-green-400')) {
+            if (inputElement.classList.contains('border-green-500') || inputElement.classList.contains('dark:border-green-400')) {
                 popup.remove();
                 observer.disconnect();
             }
         });
-        observer.observe(input, { attributes: true, attributeFilter: ['class'] });
+        observer.observe(inputElement, { attributes: true, attributeFilter: ['class'] });
 
-        function renderAll() {
-            if (showBulk) {
-                renderBarcode(canvas1, bulkCode);
-                renderBarcode(canvas2, code2);
-            } else {
-                renderBarcode(canvas1, code2);        // WHSHOES
-                renderBarcode(canvas2, whBulkCode);   // WHBULKY
-                renderBarcode(canvas3, code1);        // ASRSRTN
-                renderBarcode(canvas4, 'RTNmislabel');
-            }
-        }
-
-        if (!window.BWIPJS_LOADED) {
-            let script = document.createElement('script');
-            script.src = 'https://unpkg.com/bwip-js/dist/bwip-js-min.js';
-            script.onload = function() {
-                window.BWIPJS_LOADED = true;
-                renderAll();
-            };
-            document.head.appendChild(script);
-        } else {
-            renderAll();
-        }
+        // Manual close on click overlay
+        popup.addEventListener('click', (e) => { if(e.target === popup) popup.remove(); });
     }
 
-    function renderBarcode(canvas, text) {
-        try {
-            bwipjs.toCanvas(canvas, {
-                bcid: 'datamatrix',
-                text: text,
-                scale: 4,
-                includetext: false,
-            });
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
+    // 4. Listener: Watch for the location field to be selected
     window.addEventListener('focusin', function(e) {
         if (e.target.id === 'input_location_item') {
+            // Ensure we are in a selected row
             const selectedRow = e.target.closest('.bg-row_selected');
             if (!selectedRow) return;
 
+            // Small delay to allow page state to settle
             setTimeout(() => {
-                let day = getDayCode();
-                let mode = determineMode();
-
-                let code1 = `ASRSRTN-${day}`;
-                let code2;
-                let bulkCode = `MPRBULKAP-${day}`;
-                let whBulkCode = `WHBULKY-${day}`;
-                let showBulk;
-
-                if (mode === "WAREHOUSE") {
-                    showBulk = false;
-                    code2 = `WHSHOES-${day}`;
-                } else {
-                    showBulk = true;
-                    code2 = `MPRSHOES-${day}`;
-                }
-
-                createPopup(code1, code2, bulkCode, whBulkCode, e.target, showBulk);
-            }, 50);
+                const mode = determineMode();
+                createPopup(e.target, mode);
+            }, 100);
         }
     });
 })();
