@@ -6,8 +6,8 @@
 // @author       Dani Noman / [Your Team]
 // @match        *://*/*
 // @require      https://unpkg.com/bwip-js/dist/bwip-js-min.js
-// @downloadURL  PASTE_YOUR_RAW_GITHUB_URL_HERE
-// @updateURL    PASTE_YOUR_RAW_GITHUB_URL_HERE
+// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
+// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Returns%20-%20Locations%20On%20Screen-1.0.user.js
 // @grant        none
 // ==/UserScript==
 
