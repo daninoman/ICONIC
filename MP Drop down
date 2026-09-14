@@ -1,0 +1,770 @@
+// ==UserScript==
+// @name         OWMS Automatic Shipping Provider
+// @namespace    owms-shipping-provider
+// @version      1.0.0
+// @description  Selects the OWMS shipping provider using the vendor return postcode.
+// @match        https://YOUR-OWMS-DOMAIN/*
+// @run-at       document-start
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    "use strict";
+
+    /*
+     * IMPORTANT:
+     * Replace the @match address above with the real OWMS address.
+     *
+     * Example:
+     * @match https://owms.example.com/*
+     */
+
+    const METRO_PROVIDER = "Auspost Metro RTS";
+    const STANDARD_PROVIDER = "Australia Post Standard";
+
+    const SHOW_STATUS = true;
+    const DEBUG = false;
+
+    /*
+     * Exact postcodes taken from MP NSW Sellers.xlsx.
+     *
+     * Do not replace this with a simple range such as 1230-2780.
+     * Postcodes not explicitly included below must use
+     * Australia Post Standard.
+     */
+    const METRO_POSTCODES = new Set([
+        "1230",
+        "1405",
+        "1445",
+        "2000",
+        "2008",
+        "2009",
+        "2010",
+        "2015",
+        "2016",
+        "2017",
+        "2018",
+        "2019",
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2025",
+        "2026",
+        "2028",
+        "2030",
+        "2036",
+        "2040",
+        "2042",
+        "2043",
+        "2044",
+        "2045",
+        "2046",
+        "2049",
+        "2050",
+        "2060",
+        "2063",
+        "2065",
+        "2066",
+        "2067",
+        "2068",
+        "2069",
+        "2071",
+        "2073",
+        "2076",
+        "2077",
+        "2085",
+        "2086",
+        "2088",
+        "2093",
+        "2099",
+        "2100",
+        "2102",
+        "2113",
+        "2116",
+        "2117",
+        "2122",
+        "2126",
+        "2127",
+        "2128",
+        "2132",
+        "2136",
+        "2137",
+        "2140",
+        "2141",
+        "2142",
+        "2143",
+        "2144",
+        "2145",
+        "2147",
+        "2151",
+        "2154",
+        "2161",
+        "2162",
+        "2163",
+        "2164",
+        "2170",
+        "2175",
+        "2178",
+        "2190",
+        "2194",
+        "2196",
+        "2199",
+        "2200",
+        "2204",
+        "2205",
+        "2210",
+        "2211",
+        "2212",
+        "2214",
+        "2217",
+        "2229",
+        "2231",
+        "2232",
+        "2233",
+        "2250",
+        "2259",
+        "2261",
+        "2263",
+        "2283",
+        "2285",
+        "2289",
+        "2322",
+        "2337",
+        "2428",
+        "2478",
+        "2481",
+        "2482",
+        "2485",
+        "2486",
+        "2488",
+        "2515",
+        "2540",
+        "2565",
+        "2566",
+        "2567",
+        "2570",
+        "2575",
+        "2748",
+        "2756",
+        "2759",
+        "2765",
+        "2766",
+        "2770",
+        "2780"
+    ]);
+
+    let currentPostcode = null;
+    let currentProvider = null;
+    let retryTimer = null;
+    let statusElement = null;
+
+    function log(...values) {
+        if (DEBUG) {
+            console.log("[OWMS Shipping Router]", ...values);
+        }
+    }
+
+    function normalizePostcode(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+
+        const match = String(value).trim().match(/\b(\d{4})\b/);
+        return match ? match[1] : null;
+    }
+
+    function determineProvider(postcode) {
+        return METRO_POSTCODES.has(postcode)
+            ? METRO_PROVIDER
+            : STANDARD_PROVIDER;
+    }
+
+    function createStatusElement() {
+        if (!SHOW_STATUS || statusElement || !document.body) {
+            return;
+        }
+
+        statusElement = document.createElement("div");
+        statusElement.id = "owms-shipping-router-status";
+
+        Object.assign(statusElement.style, {
+            position: "fixed",
+            right: "15px",
+            bottom: "15px",
+            zIndex: "999999",
+            maxWidth: "350px",
+            padding: "10px 14px",
+            border: "1px solid #BFC3C6",
+            borderRadius: "4px",
+            background: "#FFFFFF",
+            color: "#1C1F21",
+            fontFamily: "Arial, sans-serif",
+            fontSize: "13px",
+            lineHeight: "1.4",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.12)"
+        });
+
+        statusElement.textContent =
+            "Shipping automation active - waiting for a vendor postcode.";
+
+        document.body.appendChild(statusElement);
+    }
+
+    function updateStatus(message, successful = null) {
+        if (!SHOW_STATUS) {
+            return;
+        }
+
+        createStatusElement();
+
+        if (!statusElement) {
+            return;
+        }
+
+        statusElement.textContent = message;
+
+        if (successful === true) {
+            statusElement.style.borderColor = "#86BC25";
+            statusElement.style.background = "#F6F7F8";
+        } else if (successful === false) {
+            statusElement.style.borderColor = "#FFDD00";
+            statusElement.style.background = "#F6F7F8";
+        } else {
+            statusElement.style.borderColor = "#BFC3C6";
+            statusElement.style.background = "#FFFFFF";
+        }
+    }
+
+    function findShippingProviderSelect() {
+        const selects = Array.from(document.querySelectorAll("select"));
+
+        return selects.find((select) => {
+            const options = Array.from(select.options).map((option) =>
+                option.textContent.trim().toLowerCase()
+            );
+
+            return (
+                options.includes(METRO_PROVIDER.toLowerCase()) &&
+                options.includes(STANDARD_PROVIDER.toLowerCase())
+            );
+        }) || null;
+    }
+
+    function setNativeSelectValue(select, providerName) {
+        const targetOption = Array.from(select.options).find(
+            (option) =>
+                option.textContent.trim().toLowerCase() ===
+                providerName.toLowerCase()
+        );
+
+        if (!targetOption) {
+            return false;
+        }
+
+        /*
+         * Use the native value setter so frameworks such as React or Angular
+         * detect the update.
+         */
+        const valueSetter = Object.getOwnPropertyDescriptor(
+            HTMLSelectElement.prototype,
+            "value"
+        )?.set;
+
+        if (valueSetter) {
+            valueSetter.call(select, targetOption.value);
+        } else {
+            select.value = targetOption.value;
+        }
+
+        targetOption.selected = true;
+
+        select.dispatchEvent(
+            new Event("input", {
+                bubbles: true
+            })
+        );
+
+        select.dispatchEvent(
+            new Event("change", {
+                bubbles: true
+            })
+        );
+
+        select.dispatchEvent(
+            new Event("blur", {
+                bubbles: true
+            })
+        );
+
+        return (
+            select.value === targetOption.value ||
+            select.options[select.selectedIndex]?.textContent
+                .trim()
+                .toLowerCase() === providerName.toLowerCase()
+        );
+    }
+
+    function selectShippingProvider(providerName, postcode) {
+        const select = findShippingProviderSelect();
+
+        if (!select) {
+            updateStatus(
+                `Postcode ${postcode} detected. Waiting for the shipping provider dropdown.`,
+                false
+            );
+
+            return false;
+        }
+
+        if (select.disabled) {
+            updateStatus(
+                `Postcode ${postcode} detected. Waiting for the shipping provider dropdown to become available.`,
+                false
+            );
+
+            return false;
+        }
+
+        const successful = setNativeSelectValue(select, providerName);
+
+        if (successful) {
+            currentProvider = providerName;
+
+            updateStatus(
+                `Vendor postcode ${postcode}: ${providerName} selected.`,
+                true
+            );
+
+            log("Provider selected", {
+                postcode,
+                providerName
+            });
+        } else {
+            updateStatus(
+                `Postcode ${postcode} detected, but "${providerName}" could not be selected.`,
+                false
+            );
+
+            console.warn(
+                `[OWMS Shipping Router] Provider option not found: ${providerName}`
+            );
+        }
+
+        return successful;
+    }
+
+    function scheduleProviderSelection(postcode) {
+        clearInterval(retryTimer);
+
+        let attempts = 0;
+        const maximumAttempts = 40;
+
+        function attemptSelection() {
+            attempts += 1;
+
+            const providerName = determineProvider(postcode);
+            const successful = selectShippingProvider(
+                providerName,
+                postcode
+            );
+
+            if (successful || attempts >= maximumAttempts) {
+                clearInterval(retryTimer);
+                retryTimer = null;
+
+                if (!successful && attempts >= maximumAttempts) {
+                    updateStatus(
+                        `Unable to select a provider for postcode ${postcode}. Please select it manually.`,
+                        false
+                    );
+                }
+            }
+        }
+
+        attemptSelection();
+
+        if (!currentProvider) {
+            retryTimer = setInterval(attemptSelection, 500);
+        }
+    }
+
+    function processPostcode(value, source) {
+        const postcode = normalizePostcode(value);
+
+        if (!postcode) {
+            return;
+        }
+
+        /*
+         * Ignore the same postcode if it has already been successfully
+         * processed for the current order.
+         */
+        if (
+            postcode === currentPostcode &&
+            currentProvider === determineProvider(postcode)
+        ) {
+            return;
+        }
+
+        currentPostcode = postcode;
+        currentProvider = null;
+
+        log("Vendor postcode detected", {
+            postcode,
+            source
+        });
+
+        updateStatus(
+            `Vendor postcode ${postcode} detected. Selecting provider...`
+        );
+
+        scheduleProviderSelection(postcode);
+    }
+
+    /*
+     * Look for a vendor or return postcode in an OWMS JSON response.
+     * Customer delivery postcode fields are deliberately ignored.
+     */
+    function postcodeKeyScore(key, path) {
+        const normalizedKey = String(key)
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
+
+        const normalizedPath = String(path)
+            .toLowerCase()
+            .replace(/[^a-z0-9.]/g, "");
+
+        if (normalizedKey === "returnpostcode") {
+            return 100;
+        }
+
+        if (normalizedKey === "vendorpostcode") {
+            return 100;
+        }
+
+        if (normalizedKey === "sellerpostcode") {
+            return 95;
+        }
+
+        if (
+            normalizedPath.includes("returnaddress") &&
+            ["postcode", "postalcode", "zip", "zipcode"].includes(
+                normalizedKey
+            )
+        ) {
+            return 90;
+        }
+
+        if (
+            normalizedPath.includes("vendoraddress") &&
+            ["postcode", "postalcode", "zip", "zipcode"].includes(
+                normalizedKey
+            )
+        ) {
+            return 90;
+        }
+
+        if (
+            normalizedPath.includes("selleraddress") &&
+            ["postcode", "postalcode", "zip", "zipcode"].includes(
+                normalizedKey
+            )
+        ) {
+            return 85;
+        }
+
+        return 0;
+    }
+
+    function findPostcodeInObject(data) {
+        const candidates = [];
+        const visited = new WeakSet();
+
+        function walk(value, path = "") {
+            if (!value || typeof value !== "object") {
+                return;
+            }
+
+            if (visited.has(value)) {
+                return;
+            }
+
+            visited.add(value);
+
+            for (const [key, childValue] of Object.entries(value)) {
+                const childPath = path ? `${path}.${key}` : key;
+                const score = postcodeKeyScore(key, childPath);
+
+                if (score > 0) {
+                    const postcode = normalizePostcode(childValue);
+
+                    if (postcode) {
+                        candidates.push({
+                            postcode,
+                            score,
+                            path: childPath
+                        });
+                    }
+                }
+
+                if (childValue && typeof childValue === "object") {
+                    walk(childValue, childPath);
+                }
+            }
+        }
+
+        walk(data);
+
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates[0] || null;
+    }
+
+    function inspectResponseData(data, source) {
+        if (!data || typeof data !== "object") {
+            return;
+        }
+
+        const result = findPostcodeInObject(data);
+
+        if (result) {
+            log("Postcode response field found", result);
+            processPostcode(result.postcode, `${source}: ${result.path}`);
+        }
+    }
+
+    /*
+     * Monitor fetch responses used by OWMS after a UID is scanned.
+     */
+    const originalFetch = window.fetch;
+
+    if (typeof originalFetch === "function") {
+        window.fetch = async function (...argumentsList) {
+            const response = await originalFetch.apply(
+                this,
+                argumentsList
+            );
+
+            try {
+                const clone = response.clone();
+                const contentType =
+                    clone.headers.get("content-type") || "";
+
+                if (contentType.includes("application/json")) {
+                    clone
+                        .json()
+                        .then((data) =>
+                            inspectResponseData(data, "Fetch response")
+                        )
+                        .catch(() => {});
+                }
+            } catch (error) {
+                log("Unable to inspect fetch response", error);
+            }
+
+            return response;
+        };
+    }
+
+    /*
+     * Monitor XMLHttpRequest responses used by older OWMS screens.
+     */
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (
+        method,
+        url,
+        ...remainingArguments
+    ) {
+        this.__owmsRequestUrl = url;
+
+        return originalXHROpen.call(
+            this,
+            method,
+            url,
+            ...remainingArguments
+        );
+    };
+
+    XMLHttpRequest.prototype.send = function (...argumentsList) {
+        this.addEventListener("load", function () {
+            try {
+                let data = null;
+
+                if (
+                    this.responseType === "json" &&
+                    this.response
+                ) {
+                    data = this.response;
+                } else if (
+                    !this.responseType ||
+                    this.responseType === "text"
+                ) {
+                    const responseText = this.responseText?.trim();
+
+                    if (
+                        responseText &&
+                        (responseText.startsWith("{") ||
+                            responseText.startsWith("["))
+                    ) {
+                        data = JSON.parse(responseText);
+                    }
+                }
+
+                if (data) {
+                    inspectResponseData(
+                        data,
+                        `XHR response: ${this.__owmsRequestUrl || "unknown"}`
+                    );
+                }
+            } catch (error) {
+                log("Unable to inspect XHR response", error);
+            }
+        });
+
+        return originalXHRSend.apply(this, argumentsList);
+    };
+
+    /*
+     * DOM fallback for screens that visibly display a vendor or return
+     * postcode rather than returning it through an accessible JSON field.
+     */
+    function findPostcodeInPage() {
+        const postcodeInputs = Array.from(
+            document.querySelectorAll("input, [data-postcode]")
+        );
+
+        for (const element of postcodeInputs) {
+            const identifyingText = [
+                element.id,
+                element.getAttribute("name"),
+                element.getAttribute("aria-label"),
+                element.getAttribute("data-postcode")
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+
+            if (
+                identifyingText.includes("vendor") ||
+                identifyingText.includes("return") ||
+                identifyingText.includes("seller")
+            ) {
+                const value =
+                    element.value ||
+                    element.getAttribute("data-postcode");
+
+                const postcode = normalizePostcode(value);
+
+                if (postcode) {
+                    return postcode;
+                }
+            }
+        }
+
+        const pageText = document.body?.innerText || "";
+
+        const patterns = [
+            /return\s*(?:address\s*)?postcode\s*[:\-]?\s*(\d{4})/i,
+            /vendor\s*(?:address\s*)?postcode\s*[:\-]?\s*(\d{4})/i,
+            /seller\s*(?:address\s*)?postcode\s*[:\-]?\s*(\d{4})/i
+        ];
+
+        for (const pattern of patterns) {
+            const match = pageText.match(pattern);
+
+            if (match) {
+                return match[1];
+            }
+        }
+
+        return null;
+    }
+
+    let mutationTimer = null;
+
+    function inspectPage() {
+        clearTimeout(mutationTimer);
+
+        mutationTimer = setTimeout(() => {
+            createStatusElement();
+
+            const postcode = findPostcodeInPage();
+
+            if (postcode) {
+                processPostcode(postcode, "OWMS page");
+            }
+
+            /*
+             * If a postcode was found before the dropdown became available,
+             * retry when OWMS updates the page.
+             */
+            if (currentPostcode && !currentProvider && !retryTimer) {
+                scheduleProviderSelection(currentPostcode);
+            }
+        }, 150);
+    }
+
+    function initialise() {
+        createStatusElement();
+        inspectPage();
+
+        const observer = new MutationObserver(inspectPage);
+
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: [
+                "disabled",
+                "value",
+                "data-postcode"
+            ]
+        });
+
+        /*
+         * Testing helper available in the browser console:
+         *
+         * OWMSShippingRouter.test("2018")
+         * OWMSShippingRouter.test("3000")
+         */
+        window.OWMSShippingRouter = {
+            test(postcode) {
+                processPostcode(postcode, "Manual test");
+            },
+
+            isMetro(postcode) {
+                const normalized = normalizePostcode(postcode);
+
+                return normalized
+                    ? METRO_POSTCODES.has(normalized)
+                    : false;
+            },
+
+            getProvider(postcode) {
+                const normalized = normalizePostcode(postcode);
+
+                return normalized
+                    ? determineProvider(normalized)
+                    : null;
+            },
+
+            postcodeCount: METRO_POSTCODES.size
+        };
+
+        log(
+            `Loaded ${METRO_POSTCODES.size} Metro RTS postcodes.`
+        );
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialise,
+            { once: true }
+        );
+    } else {
+        initialise();
+    }
+})();
