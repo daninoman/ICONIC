@@ -3,9 +3,11 @@
 // @namespace    owms-shipping-provider
 // @version      1.0.0
 // @description  Selects the OWMS shipping provider using the vendor return postcode.
-// @match        https://YOUR-OWMS-DOMAIN/*
-// @run-at       document-start
+// @author       Layla Phillips
+// @match        https://oms-live-au.zalora.net/bulk-express-checkout
 // @grant        none
+// @updateURL    
+// @downloadURL  
 // ==/UserScript==
 
 (function () {
