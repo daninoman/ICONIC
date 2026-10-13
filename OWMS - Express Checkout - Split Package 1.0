@@ -1,0 +1,130 @@
+// ==UserScript==
+// @name         OWMS Express Checkout - Split Package Shortcut
+// @namespace    http://tampermonkey.net/
+// @version      2.0
+// @description  Scan *split + Enter to split a package and refocus the scan field.
+// @match        https://oms-live-au.zalora.net/express-checkout/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const SCAN_FIELD_ID = 'ec-scan-identify-input';
+
+    let collectingCommand = false;
+    let command = '';
+    let commandTimeout;
+
+    function resetCommand() {
+        collectingCommand = false;
+        command = '';
+        clearTimeout(commandTimeout);
+    }
+
+    function findSplitButton() {
+        // Locate the supplied label and its surrounding clickable button.
+        const labels = document.querySelectorAll('span');
+
+        for (const label of labels) {
+            if (label.textContent.trim() !== 'Split Package') continue;
+
+            const button = label.closest('button, [role="button"]');
+
+            if (
+                button &&
+                button.getClientRects().length > 0 &&
+                !button.disabled &&
+                button.getAttribute('aria-disabled') !== 'true'
+            ) {
+                return button;
+            }
+        }
+
+        return null;
+    }
+
+    function refocusScanField() {
+        // Allow time for the UI to update, then wait for a usable field.
+        const deadline = Date.now() + 3000;
+
+        function tryFocus() {
+            const field = document.getElementById(SCAN_FIELD_ID);
+
+            if (
+                field &&
+                !field.disabled &&
+                field.getAttribute('aria-busy') !== 'true' &&
+                field.getClientRects().length > 0
+            ) {
+                field.focus();
+
+                if (document.activeElement === field) return;
+            }
+
+            if (Date.now() < deadline) {
+                setTimeout(tryFocus, 100);
+            } else {
+                console.warn(
+                    '[Split shortcut] Could not focus the scan field.'
+                );
+            }
+        }
+
+        setTimeout(tryFocus, 250);
+    }
+
+    function splitPackage() {
+        const button = findSplitButton();
+
+        if (!button) {
+            console.warn(
+                '[Split shortcut] No visible, enabled Split Package button found.'
+            );
+            return;
+        }
+
+        button.click();
+        refocusScanField();
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (!collectingCommand) {
+            if (event.key !== '*') return;
+
+            collectingCommand = true;
+            command = '';
+
+            // Cancel incomplete scans after five seconds.
+            commandTimeout = setTimeout(resetCommand, 5000);
+        }
+
+        // Keep shortcut characters out of the input and prevent submission.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        if (event.key === '*') return;
+
+        if (event.key === 'Escape') {
+            resetCommand();
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            const enteredCommand = command.trim().toLowerCase();
+            resetCommand();
+
+            if (enteredCommand === 'split') {
+                splitPackage();
+            }
+
+            return;
+        }
+
+        if (event.key === 'Backspace') {
+            command = command.slice(0, -1);
+        } else if (event.key.length === 1) {
+            command += event.key;
+        }
+    }, true);
+})();
