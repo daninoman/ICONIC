@@ -1,54 +1,59 @@
 // ==UserScript==
 // @name         OWMS Express Checkout - Split Package Shortcut
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Scan *split + Enter to split a package and refocus the scan field.
+// @version      2.1
+// @description  Scan *split + Enter to click Split Package.
 // @match        https://oms-live-au.zalora.net/express-checkout/*
+// @match        https://oms-live-au.zalora.net/view/v1/warehouse/express-checkout*
 // @grant        none
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
     'use strict';
 
+    const PREFIX = '[Split shortcut]';
+    const BUTTON_SELECTOR =
+        'button[data-bulky-split-action="true"]';
     const SCAN_FIELD_ID = 'ec-scan-identify-input';
 
-    let collectingCommand = false;
+    let collecting = false;
     let command = '';
-    let commandTimeout;
+    let timeout;
 
-    function resetCommand() {
-        collectingCommand = false;
+    console.log(PREFIX, 'Version 2.1 loaded.');
+
+    function reset() {
+        collecting = false;
         command = '';
-        clearTimeout(commandTimeout);
+        clearTimeout(timeout);
     }
 
-    function findSplitButton() {
-        // Locate the supplied label and its surrounding clickable button.
-        const labels = document.querySelectorAll('span');
-
-        for (const label of labels) {
-            if (label.textContent.trim() !== 'Split Package') continue;
-
-            const button = label.closest('button, [role="button"]');
-
-            if (
-                button &&
-                button.getClientRects().length > 0 &&
-                !button.disabled &&
-                button.getAttribute('aria-disabled') !== 'true'
-            ) {
-                return button;
-            }
-        }
-
-        return null;
+    function refreshTimeout() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            console.warn(PREFIX, 'Command timed out before Enter.');
+            reset();
+        }, 5000);
     }
 
     function refocusScanField() {
-        // Allow time for the UI to update, then wait for a usable field.
         const deadline = Date.now() + 3000;
 
-        function tryFocus() {
+        function attempt() {
+            // Avoid moving focus out of an open modal dialog.
+            const dialog = document.querySelector(
+                '[role="dialog"][aria-modal="true"], dialog[open]'
+            );
+
+            if (dialog && dialog.getClientRects().length > 0) {
+                console.log(
+                    PREFIX,
+                    'Dialog open; leaving focus unchanged.'
+                );
+                return;
+            }
+
             const field = document.getElementById(SCAN_FIELD_ID);
 
             if (
@@ -59,72 +64,88 @@
             ) {
                 field.focus();
 
-                if (document.activeElement === field) return;
+                if (document.activeElement === field) {
+                    console.log(PREFIX, 'Scan field focused.');
+                    return;
+                }
             }
 
             if (Date.now() < deadline) {
-                setTimeout(tryFocus, 100);
+                setTimeout(attempt, 100);
             } else {
-                console.warn(
-                    '[Split shortcut] Could not focus the scan field.'
-                );
+                console.warn(PREFIX, 'Scan field could not be focused.');
             }
         }
 
-        setTimeout(tryFocus, 250);
+        setTimeout(attempt, 300);
     }
 
     function splitPackage() {
-        const button = findSplitButton();
+        const buttons = Array.from(
+            document.querySelectorAll(BUTTON_SELECTOR)
+        );
+
+        console.log(PREFIX, 'Matching buttons:', buttons.length);
+
+        const button = buttons.find(
+            element => element.getClientRects().length > 0
+        );
 
         if (!button) {
-            console.warn(
-                '[Split shortcut] No visible, enabled Split Package button found.'
-            );
+            console.warn(PREFIX, 'No visible Split Package button found.');
+            return;
+        }
+
+        if (
+            button.disabled ||
+            button.getAttribute('aria-disabled') === 'true'
+        ) {
+            console.warn(PREFIX, 'Split Package button is disabled.');
             return;
         }
 
         button.click();
+        console.log(PREFIX, 'Click sent to Split Package button.');
         refocusScanField();
     }
 
-    document.addEventListener('keydown', function (event) {
-        if (!collectingCommand) {
+    window.addEventListener('keydown', function (event) {
+        // Leave normal item scans untouched.
+        if (!collecting) {
             if (event.key !== '*') return;
 
-            collectingCommand = true;
+            collecting = true;
             command = '';
+            console.log(PREFIX, 'Shortcut start detected.');
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
 
-            // Cancel incomplete scans after five seconds.
-            commandTimeout = setTimeout(resetCommand, 5000);
-        }
+            const completedCommand = command.trim().toLowerCase();
+            reset();
 
-        // Keep shortcut characters out of the input and prevent submission.
-        event.preventDefault();
-        event.stopImmediatePropagation();
+            console.log(PREFIX, 'Command received:', completedCommand);
 
-        if (event.key === '*') return;
-
-        if (event.key === 'Escape') {
-            resetCommand();
-            return;
-        }
-
-        if (event.key === 'Enter') {
-            const enteredCommand = command.trim().toLowerCase();
-            resetCommand();
-
-            if (enteredCommand === 'split') {
+            if (completedCommand === 'split') {
                 splitPackage();
+            } else {
+                console.warn(PREFIX, 'Unknown command:', completedCommand);
             }
 
             return;
-        }
-
-        if (event.key === 'Backspace') {
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            reset();
+            return;
+        } else if (event.key === 'Backspace') {
             command = command.slice(0, -1);
         } else if (event.key.length === 1) {
             command += event.key;
         }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        refreshTimeout();
     }, true);
 })();
