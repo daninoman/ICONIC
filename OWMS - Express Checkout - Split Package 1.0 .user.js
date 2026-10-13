@@ -5,6 +5,8 @@
 // @description  Scan *split + Enter to click Split Package.
 // @match        https://oms-live-au.zalora.net/express-checkout/*
 // @match        https://oms-live-au.zalora.net/view/v1/warehouse/express-checkout*
+// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Checkout%20-%20Split%20Package%201.0%20.user.js
+// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Checkout%20-%20Split%20Package%201.0%20.user.js
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
