@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         OWMS Express Checkout - Split Package Shortcut
+// @name         OWMS Express Checkout - Split Package Shortcut.user.js
 // @namespace    http://tampermonkey.net/
 // @version      2.1
 // @description  Scan *split + Enter to click Split Package.
