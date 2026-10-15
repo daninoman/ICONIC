@@ -1,153 +1,162 @@
 // ==UserScript==
-// @name         OWMS Express Checkout - Split Package Shortcut.user.js
-// @namespace    http://tampermonkey.net/
-// @version      2.1
-// @description  Scan *split + Enter to click Split Package.
-// @match        https://oms-live-au.zalora.net/express-checkout/*
+// @name         Zalora WMS - Express Checkout Auto Split & Proceed
+// @namespace    https://zalora.net/
+// @version      9.2
+// @description  Scans CMD_SPLIT -> clicks "Split Package" -> waits for modal -> clicks "Proceed"
+// @match        ://oms-staging-au.zalora.net/
 // @match        https://oms-live-au.zalora.net/view/v1/warehouse/express-checkout*
-// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Checkout%20-%20Split%20Package%201.0%20.user.js
-// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/OWMS%20-%20Express%20Checkout%20-%20Split%20Package%201.0%20.user.js
+// @match        https://oms-live-au.zalora.net/express-checkout/*
+// @allFrames    true
 // @grant        none
-// @run-at       document-start
+// @run-at       document-idle
 // ==/UserScript==
 
 (function () {
     'use strict';
 
-    const PREFIX = '[Split shortcut]';
-    const BUTTON_SELECTOR =
-        'button[data-bulky-split-action="true"]';
-    const SCAN_FIELD_ID = 'ec-scan-identify-input';
+    // Barcode trigger string
+    const TRIGGER = 'CMD_SPLIT';
+    const INPUT_ID = 'ec-scan-pack-input';
+    let keyBuffer = '';
 
-    let collecting = false;
-    let command = '';
-    let timeout;
+    // 1. Direct hook on the scan input box
+    function attachDirectInputInterceptor() {
+        const input = document.getElementById(INPUT_ID);
+        if (!input || input.dataset.tmHooked) return;
+        input.dataset.tmHooked = 'true';
 
-    console.log(PREFIX, 'Version 2.1 loaded.');
-
-    function reset() {
-        collecting = false;
-        command = '';
-        clearTimeout(timeout);
-    }
-
-    function refreshTimeout() {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            console.warn(PREFIX, 'Command timed out before Enter.');
-            reset();
-        }, 5000);
-    }
-
-    function refocusScanField() {
-        const deadline = Date.now() + 3000;
-
-        function attempt() {
-            // Avoid moving focus out of an open modal dialog.
-            const dialog = document.querySelector(
-                '[role="dialog"][aria-modal="true"], dialog[open]'
-            );
-
-            if (dialog && dialog.getClientRects().length > 0) {
-                console.log(
-                    PREFIX,
-                    'Dialog open; leaving focus unchanged.'
-                );
-                return;
-            }
-
-            const field = document.getElementById(SCAN_FIELD_ID);
-
-            if (
-                field &&
-                !field.disabled &&
-                field.getAttribute('aria-busy') !== 'true' &&
-                field.getClientRects().length > 0
-            ) {
-                field.focus();
-
-                if (document.activeElement === field) {
-                    console.log(PREFIX, 'Scan field focused.');
-                    return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = input.value.trim();
+                if (val.toUpperCase().includes(TRIGGER.toUpperCase()) || keyBuffer.toUpperCase().includes(TRIGGER.toUpperCase())) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    wipeInput(input);
+                    keyBuffer = '';
+                    handleSplitWorkflow();
                 }
             }
+        }, true);
 
-            if (Date.now() < deadline) {
-                setTimeout(attempt, 100);
-            } else {
-                console.warn(PREFIX, 'Scan field could not be focused.');
+        input.addEventListener('input', (e) => {
+            const val = input.value.trim();
+            if (val.toUpperCase().includes(TRIGGER.toUpperCase())) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                wipeInput(input);
+                keyBuffer = '';
+                handleSplitWorkflow();
             }
-        }
-
-        setTimeout(attempt, 300);
+        }, true);
     }
 
-    function splitPackage() {
-        const buttons = Array.from(
-            document.querySelectorAll(BUTTON_SELECTOR)
-        );
+    const observer = new MutationObserver(attachDirectInputInterceptor);
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    attachDirectInputInterceptor();
 
-        console.log(PREFIX, 'Matching buttons:', buttons.length);
-
-        const button = buttons.find(
-            element => element.getClientRects().length > 0
-        );
-
-        if (!button) {
-            console.warn(PREFIX, 'No visible Split Package button found.');
-            return;
-        }
-
-        if (
-            button.disabled ||
-            button.getAttribute('aria-disabled') === 'true'
-        ) {
-            console.warn(PREFIX, 'Split Package button is disabled.');
-            return;
-        }
-
-        button.click();
-        console.log(PREFIX, 'Click sent to Split Package button.');
-        refocusScanField();
-    }
-
-    window.addEventListener('keydown', function (event) {
-        // Leave normal item scans untouched.
-        if (!collecting) {
-            if (event.key !== '*') return;
-
-            collecting = true;
-            command = '';
-            console.log(PREFIX, 'Shortcut start detected.');
-        } else if (event.key === 'Enter') {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-
-            const completedCommand = command.trim().toLowerCase();
-            reset();
-
-            console.log(PREFIX, 'Command received:', completedCommand);
-
-            if (completedCommand === 'split') {
-                splitPackage();
-            } else {
-                console.warn(PREFIX, 'Unknown command:', completedCommand);
+    // 2. Global backup keyboard listener
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const active = document.activeElement;
+            const val = (active && active.value) ? active.value.trim() : '';
+            if (val.toUpperCase().includes(TRIGGER.toUpperCase()) || keyBuffer.toUpperCase().includes(TRIGGER.toUpperCase())) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (active) wipeInput(active);
+                keyBuffer = '';
+                handleSplitWorkflow();
             }
-
+            keyBuffer = '';
             return;
-        } else if (event.key === 'Escape') {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            reset();
-            return;
-        } else if (event.key === 'Backspace') {
-            command = command.slice(0, -1);
-        } else if (event.key.length === 1) {
-            command += event.key;
         }
 
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        refreshTimeout();
+        if (e.key.length === 1) {
+            keyBuffer += e.key;
+            if (keyBuffer.length > 25) keyBuffer = keyBuffer.slice(-25);
+
+            if (keyBuffer.toUpperCase().includes(TRIGGER.toUpperCase())) {
+                const active = document.activeElement;
+                if (active) wipeInput(active);
+                keyBuffer = '';
+                handleSplitWorkflow();
+            }
+        }
     }, true);
+
+    function wipeInput(el) {
+        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (nativeSetter) {
+            nativeSetter.call(el, '');
+        } else {
+            el.value = '';
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // 3. Step 1: Click "Split Package"
+    function handleSplitWorkflow() {
+        const candidates = Array.from(document.querySelectorAll('span, button, a, div[role="button"]'));
+        const target = candidates.find(el => {
+            const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+            const rect = el.getBoundingClientRect();
+            return text.includes('split package') && rect.width > 0 && rect.height > 0;
+        });
+
+        if (!target) {
+            console.warn('[Tampermonkey] "Split Package" button not found.');
+            return;
+        }
+
+        const btn = target.closest('button') || target;
+
+        // Visual flash (green outline)
+        const prevOutline = btn.style.outline;
+        btn.style.outline = '3px solid #22c55e';
+        setTimeout(() => { btn.style.outline = prevOutline; }, 400);
+
+        btn.focus();
+        btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+        btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+        btn.click();
+        console.log('[Tampermonkey] "Split Package" clicked.');
+
+        // Step 2: Poll for modal animation and click "Proceed"
+        waitForAndClickProceed(0);
+    }
+
+    // 4. Step 2: Poll for "Proceed" button (checks every 100ms for up to 3 seconds)
+    function waitForAndClickProceed(retryCount) {
+        const MAX_RETRIES = 30; // 30 retries * 100ms = 3.0 seconds
+        const RETRY_INTERVAL_MS = 100;
+
+        const candidates = Array.from(document.querySelectorAll('span, button, a, div[role="button"]'));
+        const proceedTarget = candidates.find(el => {
+            const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+            const rect = el.getBoundingClientRect();
+            return text === 'proceed' && rect.width > 0 && rect.height > 0;
+        });
+
+        if (proceedTarget) {
+            const btn = proceedTarget.closest('button') || proceedTarget;
+
+            // Visual flash (cyan outline)
+            const prevOutline = btn.style.outline;
+            btn.style.outline = '3px solid #06b6d4';
+            setTimeout(() => { btn.style.outline = prevOutline; }, 400);
+
+            btn.focus();
+            btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+            btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+            btn.click();
+            console.log('[Tampermonkey] "Proceed" button clicked successfully.');
+            return;
+        }
+
+        if (retryCount < MAX_RETRIES) {
+            setTimeout(() => waitForAndClickProceed(retryCount + 1), RETRY_INTERVAL_MS);
+        } else {
+            console.warn('[Tampermonkey] Timed out waiting for "Proceed" button to appear.');
+        }
+    }
 })();
