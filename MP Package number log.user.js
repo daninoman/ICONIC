@@ -1,10 +1,13 @@
 // ==UserScript==
-// @name         MP Package 
+// @name         MP Package number log 
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Detects package numbers and logs them + packer email to Google Sheets
+// @author       Surbhi Saini
 // @match        https://oms-live-au.zalora.net/bulk-express-checkout*
 // @grant        GM_xmlhttpRequest
+// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
+// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
 // ==/UserScript==
