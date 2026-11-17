@@ -7,8 +7,8 @@
 // @match        https://oms-live-au.zalora.net/bulk-express-checkout*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
-// @updateURL    
-// @downloadURL 
+// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
+// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
 // ==/UserScript==
