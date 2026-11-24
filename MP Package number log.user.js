@@ -1,15 +1,12 @@
-// ==/UserScript==
 // ==UserScript==
 // @name         MP Package Number Logger
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @description  Logs package numbers and the visible OWMS user email to Google Sheets
+// @version      3.1
+// @description  Logs entry date, package number, and OWMS user email to Google Sheets
 // @author       Surbhi Saini
 // @match        https://oms-live-au.zalora.net/bulk-express-checkout*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
-// @updateURL    	https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
-// @downloadURL    	https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
 // ==/UserScript==
@@ -20,22 +17,66 @@
   const GOOGLE_SCRIPT_URL =
     "https://script.google.com/a/macros/theiconic.com.au/s/AKfycbyj3J7OroZhC-OYNJfG4HN138Viyw7hrOkseiKGox1UI4y-uyIYsMmKjSWPVmP0UDkUow/exec";
 
-  // Change this for each computer: MPS1, MPS2, ... MPS8
+  // This computer writes to the existing MPS1 tab.
   const TARGET_SHEET_TAB = "MPS1";
 
-  const PACKAGE_REGEX = /\bRS\d+-\d+\b/g;
   const loggedPackages = new Set();
   const pendingPackages = new Set();
 
+  function normalizeHeader(text) {
+    return String(text || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
   function getPackerEmail() {
     const pageText = document.body ? document.body.innerText : "";
-
-    // Reads the email shown after "User Email:" on the OWMS page.
     const match = pageText.match(
       /User\s*Email:\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i
     );
 
     return match ? match[1].trim() : "";
+  }
+
+  function findPackageNumbers() {
+    const tables = Array.from(document.querySelectorAll("table"));
+
+    for (const table of tables) {
+      const rows = Array.from(table.rows);
+
+      for (let headerRowIndex = 0; headerRowIndex < rows.length; headerRowIndex++) {
+        const headerCells = Array.from(rows[headerRowIndex].cells);
+        const headers = headerCells.map(cell =>
+          normalizeHeader(cell.innerText)
+        );
+
+        const packageColumnIndex = headers.findIndex(header =>
+          header.includes("package number")
+        );
+
+        if (packageColumnIndex === -1) {
+          continue;
+        }
+
+        const packageNumbers = [];
+
+        for (let rowIndex = headerRowIndex + 1; rowIndex < rows.length; rowIndex++) {
+          const cells = Array.from(rows[rowIndex].cells);
+          const packageNumber = cells[packageColumnIndex]
+            ? cells[packageColumnIndex].innerText.trim()
+            : "";
+
+          if (packageNumber) {
+            packageNumbers.push(packageNumber);
+          }
+        }
+
+        return packageNumbers;
+      }
+    }
+
+    return [];
   }
 
   function showNotification(message, isError) {
@@ -72,10 +113,11 @@
     }, 4000);
   }
 
-  function logToGoogleSheet(packageNumber, packerEmail) {
-    console.log(
-      `[Logger] Sending package: ${packageNumber}; packer: ${packerEmail}; tab: ${TARGET_SHEET_TAB}`
-    );
+  function sendPackageToGoogleSheet(packageNumber, packerEmail) {
+    console.log("[Logger] Sending to MPS1:", {
+      packageNumber: packageNumber,
+      packerEmail: packerEmail
+    });
 
     GM_xmlhttpRequest({
       method: "POST",
@@ -84,9 +126,9 @@
         "Content-Type": "text/plain;charset=utf-8"
       },
       data: JSON.stringify({
+        sheetName: TARGET_SHEET_TAB,
         packageNumber: packageNumber,
-        userEmail: packerEmail,
-        sheetName: TARGET_SHEET_TAB
+        userEmail: packerEmail
       }),
 
       onload: function (response) {
@@ -102,20 +144,15 @@
             result.status === "success"
           ) {
             loggedPackages.add(packageNumber);
-            console.log(
-              `[Logger] Saved ${packageNumber} with packer ${result.packer} to tab ${result.tab}.`
-            );
+            console.log(`[Logger] Logged ${packageNumber} to ${result.tab}.`);
             showNotification(`Logged: ${packageNumber}`, false);
           } else {
-            console.error(
-              "[Logger] Apps Script returned an error:",
-              result.error || result
-            );
+            console.error("[Logger] Apps Script error:", result.error || result);
             showNotification(`Could not log: ${packageNumber}`, true);
           }
         } catch (error) {
           console.error(
-            "[Logger] Could not read the response as JSON:",
+            "[Logger] Could not read the response:",
             response.responseText,
             error
           );
@@ -144,28 +181,26 @@
   function checkForPackageNumbers() {
     if (!document.body) return;
 
-    const pageText = document.body.innerText || "";
-    const matches = pageText.match(PACKAGE_REGEX);
-
-    if (!matches) return;
+    const packageNumbers = findPackageNumbers();
+    if (packageNumbers.length === 0) return;
 
     const packerEmail = getPackerEmail();
 
-    // Wait until OWMS displays the user's email rather than writing a blank value.
-    // A later page update will trigger another scan.
     if (!packerEmail) {
-      console.warn("[Logger] OWMS user email not found yet. Will check again.");
+      console.warn("[Logger] Could not find the User Email at the top of the page.");
       return;
     }
 
-    for (const packageNumber of matches) {
+    for (const packageNumber of packageNumbers) {
       if (
-        !loggedPackages.has(packageNumber) &&
-        !pendingPackages.has(packageNumber)
+        loggedPackages.has(packageNumber) ||
+        pendingPackages.has(packageNumber)
       ) {
-        pendingPackages.add(packageNumber);
-        logToGoogleSheet(packageNumber, packerEmail);
+        continue;
       }
+
+      pendingPackages.add(packageNumber);
+      sendPackageToGoogleSheet(packageNumber, packerEmail);
     }
   }
 
