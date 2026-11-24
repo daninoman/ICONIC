@@ -1,14 +1,15 @@
+// ==/UserScript==
 // ==UserScript==
 // @name         MP Package Number Logger
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Logs package numbers and packer email to Google Sheets
+// @version      2.2
+// @description  Logs package numbers and the visible OWMS user email to Google Sheets
 // @author       Surbhi Saini
 // @match        https://oms-live-au.zalora.net/bulk-express-checkout*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
-// @updateURL    https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
-// @downloadURL  https://github.com/daninoman/ICONIC/raw/refs/heads/main/MP%20Package%20number%20log.user.js
+// @updateURL    
+// @downloadURL
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
 // ==/UserScript==
@@ -26,10 +27,12 @@
   const loggedPackages = new Set();
   const pendingPackages = new Set();
 
-  function getUserEmail() {
+  function getPackerEmail() {
     const pageText = document.body ? document.body.innerText : "";
+
+    // Reads the email shown after "User Email:" on the OWMS page.
     const match = pageText.match(
-      /User\s*Email:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
+      /User\s*Email:\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i
     );
 
     return match ? match[1].trim() : "";
@@ -41,6 +44,7 @@
     if (!toast) {
       toast = document.createElement("div");
       toast.id = "pkg-logger-toast";
+
       Object.assign(toast.style, {
         position: "fixed",
         bottom: "20px",
@@ -54,6 +58,7 @@
         zIndex: "999999",
         transition: "opacity 0.3s ease"
       });
+
       document.body.appendChild(toast);
     }
 
@@ -67,9 +72,9 @@
     }, 4000);
   }
 
-  function logToGoogleSheet(packageNumber, userEmail) {
+  function logToGoogleSheet(packageNumber, packerEmail) {
     console.log(
-      `[Logger] Sending package: ${packageNumber}; email: ${userEmail || "(not found)"}; tab: ${TARGET_SHEET_TAB}`
+      `[Logger] Sending package: ${packageNumber}; packer: ${packerEmail}; tab: ${TARGET_SHEET_TAB}`
     );
 
     GM_xmlhttpRequest({
@@ -80,7 +85,7 @@
       },
       data: JSON.stringify({
         packageNumber: packageNumber,
-        userEmail: userEmail,
+        userEmail: packerEmail,
         sheetName: TARGET_SHEET_TAB
       }),
 
@@ -98,7 +103,7 @@
           ) {
             loggedPackages.add(packageNumber);
             console.log(
-              `[Logger] Saved ${packageNumber} to tab ${result.tab}.`
+              `[Logger] Saved ${packageNumber} with packer ${result.packer} to tab ${result.tab}.`
             );
             showNotification(`Logged: ${packageNumber}`, false);
           } else {
@@ -144,7 +149,14 @@
 
     if (!matches) return;
 
-    const userEmail = getUserEmail();
+    const packerEmail = getPackerEmail();
+
+    // Wait until OWMS displays the user's email rather than writing a blank value.
+    // A later page update will trigger another scan.
+    if (!packerEmail) {
+      console.warn("[Logger] OWMS user email not found yet. Will check again.");
+      return;
+    }
 
     for (const packageNumber of matches) {
       if (
@@ -152,7 +164,7 @@
         !pendingPackages.has(packageNumber)
       ) {
         pendingPackages.add(packageNumber);
-        logToGoogleSheet(packageNumber, userEmail);
+        logToGoogleSheet(packageNumber, packerEmail);
       }
     }
   }
@@ -164,13 +176,15 @@
     scanTimer = setTimeout(checkForPackageNumbers, 300);
   }
 
-  const observer = new MutationObserver(scheduleScan);
+  if (document.body) {
+    const observer = new MutationObserver(scheduleScan);
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    characterData: true
-  });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+  }
 
   checkForPackageNumbers();
 })();
