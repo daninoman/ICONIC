@@ -17,7 +17,7 @@
   const GOOGLE_SCRIPT_URL =
     "https://script.google.com/a/macros/theiconic.com.au/s/AKfycbxHWc4oD4zqbKqMbHKGdPdXSsNe7ymbFWRPZ83wKc_d-mgXKpSuIX6rr9AsR1MdBKbIOw/exec";
 
-  // This computer writes to the existing MPS1 tab.
+  // This computer writes to the existing MPS2 tab.
   const TARGET_SHEET_TAB = "MPS2";
 
   const loggedPackages = new Set();
