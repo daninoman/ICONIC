@@ -15,7 +15,7 @@
   "use strict";
 
   const GOOGLE_SCRIPT_URL =
-    "https://script.google.com/a/macros/theiconic.com.au/s/AKfycbyj3J7OroZhC-OYNJfG4HN138Viyw7hrOkseiKGox1UI4y-uyIYsMmKjSWPVmP0UDkUow/exec";
+    "https://script.google.com/a/macros/theiconic.com.au/s/AKfycbzrFgy80euEKEOyJvPPYcLR5aWGeFwxpaTTS7PFurMXEEAZNQOuk0ztyRyJGh0_o2AG/exec";
 
   // This computer writes to the existing MPS1 tab.
   const TARGET_SHEET_TAB = "MPS1";
