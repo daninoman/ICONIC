@@ -1,0 +1,95 @@
+"// ==UserScript==
+// @name         Zalora WMS - Quick Shipping, Blur & Auto-Next
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  Automates Shipping selection, unfocuses scan field, and clicks Next
+// @author       Assistant
+// @match        https://oms-live-au.zalora.net/bulk-express-checkout
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    let inputBuffer = """";
+    let lastKeyTime = Date.now();
+
+    // 1. GLOBAL LISTENER: For the shortcut data matrix codes (*auspost, *virtual)
+    document.addEventListener('keydown', function(e) {
+        const currentTime = Date.now();
+
+        // Buffer reset for manual typing
+        if (currentTime - lastKeyTime > 150) {
+            inputBuffer = """";
+        }
+        lastKeyTime = currentTime;
+
+        if (e.key === 'Enter') {
+            if (inputBuffer.includes(""*auspost"") || inputBuffer.includes(""*virtual"")) {
+                e.preventDefault();
+                processShortcut(inputBuffer.trim());
+            }
+            inputBuffer = """";
+        } else if (e.key.length === 1) {
+            inputBuffer += e.key;
+        }
+    }, true);
+
+    // 2. SPECIFIC LISTENER: Unfocus the ""scan_uid"" field after any scan
+    const attachBlurListener = setInterval(() => {
+        const scanInput = document.getElementById('scan_uid');
+        if (scanInput) {
+            scanInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    setTimeout(() => {
+                        scanInput.blur();
+                        console.log(""Tampermonkey: Field 'scan_uid' unfocused."");
+                    }, 50);
+                }
+            });
+            clearInterval(attachBlurListener);
+        }
+    }, 1000);
+
+    function processShortcut(code) {
+        const selectElement = document.getElementById('select_3pl');
+        const nextButton = document.getElementById('btn_to_qc_step');
+
+        if (!selectElement) return;
+
+        let targetText = """";
+        if (code.includes(""*auspost"")) {
+            targetText = ""Auspost RTS Carrier"";
+        } else if (code.includes(""*virtual"")) {
+            targetText = ""RTS Virtual Carrier"";
+        }
+
+        if (targetText) {
+            let found = false;
+            for (let i = 0; i < selectElement.options.length; i++) {
+                if (selectElement.options[i].text.trim() === targetText) {
+                    selectElement.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                // Trigger events so the page knows the value changed
+                selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                selectElement.dispatchEvent(new Event('input', { bubbles: true }));
+                console.log(""Tampermonkey: Selected "" + targetText);
+
+                // 3. AUTO-CLICK: Click the ""Next"" button after a short delay
+                if (nextButton) {
+                    setTimeout(() => {
+                        nextButton.click();
+                        console.log(""Tampermonkey: 'Next' button clicked."");
+                    }, 200); // 200ms delay to ensure the dropdown change is registered
+                } else {
+                    console.warn(""Tampermonkey: 'Next' button not found."");
+                }
+            }
+        }
+    }
+})();"
